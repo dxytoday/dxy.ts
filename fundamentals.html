@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Document</title>
+
+    <style>
+        body {
+            margin: 0;
+        }
+
+        canvas {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+
+        var vertexShaderSource = /* glsl */`
+
+            attribute vec2 a_position;
+            uniform vec2 u_resolution;
+
+            void main() {
+                vec2 zeroToOne = a_position / u_resolution;
+                vec2 zeroToTwo = zeroToOne * 2.0;
+                vec2 clipSpace = zeroToTwo - 1.0;
+
+                gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+            }
+
+        `;
+        var fragmentShaderSource = /* glsl */`
+
+            precision mediump float;
+
+            uniform vec4 u_color;
+
+            void main() {
+                gl_FragColor = u_color;
+            }
+        
+        `;
+
+        function createShader(gl, type, source) {
+            var shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+
+            var success = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
+            if (success) {
+                return shader;
+            }
+
+            console.log(gl.getShaderInfoLog(shader));
+            gl.deleteShader(shader);
+        }
+
+        function createProgram(gl, vertexShader, fragmentShader) {
+            var program = gl.createProgram();
+            gl.attachShader(program, vertexShader);
+            gl.attachShader(program, fragmentShader);
+            gl.linkProgram(program);
+
+            var success = gl.getProgramParameter(program, gl.LINK_STATUS);
+            if (success) {
+                return program;
+            }
+
+            console.log(gl.getProgramInfoLog(program));
+            gl.deleteProgram(program);
+        }
+
+        function main() {
+            var canvas = document.querySelector("#canvas");
+            var gl = canvas.getContext("webgl");
+
+            if (!gl) {
+                return;
+            }
+
+            var vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+            var fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+
+            var program = createProgram(gl, vertexShader, fragmentShader);
+
+            var positionAttributeLocation = gl.getAttribLocation(program, "a_position");
+            var resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
+            var colorUniformLocation = gl.getUniformLocation(program, "u_color");
+
+            gl.canvas.width = gl.canvas.clientWidth;
+            gl.canvas.height = gl.canvas.clientHeight;
+            gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
+            gl.clearColor(0, 0, 0, 0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            gl.useProgram(program);
+
+            gl.enableVertexAttribArray(positionAttributeLocation);
+
+            var positionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+
+            gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+
+            gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
+
+            for (let i = 0; i < 50; i++) {
+                setRectangle(gl, randomInt(gl.canvas.width / 2), randomInt(gl.canvas.height / 2), randomInt(300), randomInt(300));
+                gl.uniform4f(colorUniformLocation, Math.random(), Math.random(), Math.random(), 1)
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+            }
+        }
+
+        function randomInt(range) {
+            return Math.floor(Math.random() * range);
+        }
+
+        function setRectangle(gl, x, y, width, height) {
+            var x1 = x;
+            var x2 = x + width;
+            var y1 = y;
+            var y2 = y + height;
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                x1, y1,
+                x2, y1,
+                x1, y2,
+                x1, y2,
+                x2, y1,
+                x2, y2,
+            ]), gl.STATIC_DRAW);
+        }
+
+        main();
+
+    </script>
+
+</body>
+
+</html>

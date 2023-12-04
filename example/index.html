@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+
+<head>
+	<meta charset="UTF-8" />
+
+	<link rel="shortcut icon " type="images/x-icon" href="favicon.ico">
+
+	<title>dxy.ts</title>
+
+	<style>
+		* {
+			box-sizing: border-box;
+		}
+
+		body {
+			margin: 0;
+			background-color: #aaa;
+		}
+
+		#canvas {
+			border: 1px solid black;
+			display: block;
+
+			width: 1366px;
+			height: 768px;
+
+			position: absolute;
+			top: 0;
+			bottom: 0;
+			left: 0;
+			right: 0;
+			margin: auto;
+		}
+	</style>
+</head>
+
+<body>
+	<canvas id="canvas"></canvas>
+
+	<script type="module">
+
+		import DXY from "../dist/dxy.js";
+
+		const dxy = new DXY(document.getElementById("canvas"));
+
+		dxy.setBackground({ r: 0, g: 0, b: 0 });
+		dxy.setCamera({ translation: { x: 0, y: 0, z: 5 }, target: { x: 0, y: 0, z: 0 } });
+		dxy.setAmbient(0.3);
+		dxy.setSpotLight(
+
+			{
+				translation: { x: 1, y: 1, z: 1 },
+				brightness: 0.7,
+				cutOff: { x: 0, y: 45 },
+			}
+
+		);
+
+		dxy.loadGLB('./models/glb/untitled.glb');
+
+		window.dxy = dxy;
+
+	</script>
+
+</body>
+
+</html>

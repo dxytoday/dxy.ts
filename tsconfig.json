@@ -1,0 +1,14 @@
+{
+	"compilerOptions": {
+		"target": "esnext",
+		"module": "ESNext",
+		"sourceMap": true,
+		// "strict": true,
+		"declaration": false,
+		"declarationDir": null,
+		"removeComments": true,
+		"typeRoots": [
+			"./typings"
+		],
+	},
+}

@@ -45,7 +45,7 @@ export class CameraControls {
 
 	}
 
-	private onPointerDown(anyEvent: AnyEvent): void {
+	private onPointerDown(anyEvent: IDomEvent): void {
 
 		const event = anyEvent.event as PointerEvent;
 
@@ -71,7 +71,7 @@ export class CameraControls {
 
 	}
 
-	private onPointerMove(anyEvent: AnyEvent): void {
+	private onPointerMove(anyEvent: IDomEvent): void {
 
 		const event = anyEvent.event as PointerEvent;
 
@@ -121,7 +121,7 @@ export class CameraControls {
 
 	}
 
-	private onMouseWheel(anyEvent: AnyEvent): void {
+	private onMouseWheel(anyEvent: IDomEvent): void {
 
 		const event = anyEvent.event as WheelEvent;
 

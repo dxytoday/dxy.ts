@@ -16,7 +16,7 @@ export class SpotLight extends Light {
 
 	}
 
-	public override update(event?: AnyEvent): void {
+	public override update(event?: IAnyEvent): void {
 
 		if (event === undefined) {
 

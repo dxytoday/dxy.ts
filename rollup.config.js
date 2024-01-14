@@ -6,7 +6,7 @@ export default {
 	output: [
 		{
 			file: "./dist/dxy.js",
-			format: "es",
+			format: "esm",
 			sourcemap: true,
 		},
 	],

@@ -1,6 +1,6 @@
 export class EventDispatcher {
 
-	private listeners: Map<string, Map<Function, object>>;
+	private listeners: Map<string, Map<Function, object>> | undefined;
 
 	public addEventListener(type: string, listener: Function, scope: object): void {
 
@@ -43,7 +43,7 @@ export class EventDispatcher {
 
 	}
 
-	protected dispatchEvent(event: AnyEvent) {
+	protected dispatchEvent(event: IAnyEvent) {
 
 		if (this.listeners === undefined) {
 

@@ -65,7 +65,7 @@ export class WebGLCache {
 			const vertexShader = this.acquireShader(vertexSource, this.gl.VERTEX_SHADER);
 			const fragmentShader = this.acquireShader(fragmentSource, this.gl.FRAGMENT_SHADER);
 
-			program = this.gl.createProgram();
+			program = this.gl.createProgram() as WebGLProgram;
 
 			this.gl.attachShader(program, vertexShader);
 			this.gl.attachShader(program, fragmentShader);
@@ -97,7 +97,7 @@ export class WebGLCache {
 
 		if (shader === undefined) {
 
-			shader = this.gl.createShader(type);
+			shader = this.gl.createShader(type) as WebGLShader;
 
 			this.gl.shaderSource(shader, source);
 			this.gl.compileShader(shader);
@@ -146,7 +146,7 @@ export class WebGLCache {
 
 			for (let ii = 0; ii < count; ii++) {
 
-				const info: WebGLActiveInfo = this.gl.getActiveAttrib(program, ii);
+				const info = this.gl.getActiveAttrib(program, ii) as WebGLActiveInfo;
 				const location: number = this.gl.getAttribLocation(program, info.name);
 
 				const attribute = new WebGLAttribute(this.renderer, location, info.name);
@@ -174,8 +174,8 @@ export class WebGLCache {
 
 			for (let ii = 0; ii < count; ii++) {
 
-				const info: WebGLActiveInfo = this.gl.getActiveUniform(program, ii);
-				const location: WebGLUniformLocation = this.gl.getUniformLocation(program, info.name);
+				const info = this.gl.getActiveUniform(program, ii) as WebGLActiveInfo;
+				const location = this.gl.getUniformLocation(program, info.name) as WebGLUniformLocation;
 
 				WebGLUniformFactory.toUniforms(this.gl, info, location, uniforms);
 
@@ -191,7 +191,7 @@ export class WebGLCache {
 
 	public getBuffer(attribute: Attribute): WebGLBuffer {
 
-		return this.buffers.get(attribute);
+		return this.buffers.get(attribute) as WebGLBuffer;
 
 	}
 
@@ -201,7 +201,7 @@ export class WebGLCache {
 
 		if (buffer === undefined) {
 
-			buffer = this.gl.createBuffer();
+			buffer = this.gl.createBuffer() as WebGLBuffer;
 
 			attribute.addEventListener(Attribute.events.dispose, this.onAttributeDispose, this);
 
@@ -213,7 +213,7 @@ export class WebGLCache {
 
 	}
 
-	private onAttributeDispose(event: AnyEvent): void {
+	private onAttributeDispose(event: IAnyEvent): void {
 
 		const attribute = event.source as Attribute;
 
@@ -235,7 +235,7 @@ export class WebGLCache {
 
 	public getTexture(texture: Texture): WebGLTexture {
 
-		return this.textures.get(texture);
+		return this.textures.get(texture) as WebGLTexture;
 
 	}
 
@@ -245,7 +245,7 @@ export class WebGLCache {
 
 		if (webglTexture === undefined) {
 
-			webglTexture = this.gl.createTexture();
+			webglTexture = this.gl.createTexture() as WebGLTexture;
 
 			texture.addEventListener(Texture.events.dispose, this.onTextureDispose, this);
 
@@ -257,7 +257,7 @@ export class WebGLCache {
 
 	}
 
-	private onTextureDispose(event: AnyEvent): void {
+	private onTextureDispose(event: IAnyEvent): void {
 
 		const texture = event.source as Texture;
 
@@ -283,7 +283,7 @@ export class WebGLCache {
 
 		if (vao === undefined) {
 
-			vao = this.gl.createVertexArray();
+			vao = this.gl.createVertexArray() as WebGLVertexArrayObject;
 
 			geometry.addEventListener(Geometry.events.dispose, this.onGeometryDispose, this);
 
@@ -295,7 +295,7 @@ export class WebGLCache {
 
 	}
 
-	private onGeometryDispose(event: AnyEvent): void {
+	private onGeometryDispose(event: IAnyEvent): void {
 
 		const geometry = event.source as Geometry;
 

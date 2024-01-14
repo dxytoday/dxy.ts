@@ -10,10 +10,16 @@ declare class RenderGroup {
 
 }
 
-type AnyEvent = {
+declare interface IAnyEvent {
 
 	type: string;
 	source?: object;
 	[propName: string]: any;
 
-};
+}
+
+declare interface IDomEvent extends IAnyEvent {
+
+	event?: Event
+
+}

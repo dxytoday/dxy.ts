@@ -250,7 +250,7 @@ function _convertThreeObject(threeObject: any): TRSNode {
 
 			node = new Entity(geometry, material);
 
-		} else if (threeObject.isObject3D === true) {
+		} else {
 
 			node = new TRSNode();
 
@@ -260,7 +260,7 @@ function _convertThreeObject(threeObject: any): TRSNode {
 
 		for (const threeChild of threeObject.children) {
 
-			const child = this.fromThreeObject(threeChild);
+			const child = fromThreeObject(threeChild);
 
 			node.add(child);
 

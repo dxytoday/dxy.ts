@@ -3,7 +3,7 @@ import { TRSObject } from "./TRSObject";
 
 export class TRSNode extends TRSObject {
 
-	public parent: TRSNode;
+	public parent: TRSNode | undefined;
 	public readonly children: TRSNode[] = [];
 
 	public readonly worldMatrix = new Matrix4();
@@ -24,7 +24,7 @@ export class TRSNode extends TRSObject {
 
 	}
 
-	public add(node: TRSNode): TRSNode {
+	public add(node: TRSNode): TRSNode | undefined {
 
 		if (node === undefined) {
 
@@ -51,7 +51,7 @@ export class TRSNode extends TRSObject {
 
 	}
 
-	public remove(node: TRSNode): TRSNode {
+	public remove(node: TRSNode): TRSNode | undefined {
 
 		if (node === undefined) {
 
@@ -80,7 +80,7 @@ export class TRSNode extends TRSObject {
 
 	}
 
-	public get(name: string): TRSNode {
+	public get(name: string): TRSNode | undefined {
 
 		for (const child of this.children) {
 
@@ -132,7 +132,7 @@ export class TRSNode extends TRSObject {
 
 		let index = 0;
 
-		const result: { done: boolean, value: TRSNode } = { done: false, value: undefined };
+		const result: { done: boolean, value?: TRSNode } = { done: false, value: undefined };
 
 		return {
 

@@ -26,10 +26,10 @@ export class CanvasElement extends EventDispatcher {
 
 		const scope = this;
 
-		const pointerDown = { type: CanvasElement.events.pointerDown, event: undefined };
-		const pointerMove = { type: CanvasElement.events.pointerMove, event: undefined };
-		const pointerUp = { type: CanvasElement.events.pointerUp, event: undefined };
-		const wheel = { type: CanvasElement.events.wheel, event: undefined };
+		const pointerDown: IDomEvent = { type: CanvasElement.events.pointerDown, event: undefined };
+		const pointerMove: IDomEvent = { type: CanvasElement.events.pointerMove, event: undefined };
+		const pointerUp: IDomEvent = { type: CanvasElement.events.pointerUp, event: undefined };
+		const wheel: IDomEvent = { type: CanvasElement.events.wheel, event: undefined };
 
 		function onContextMenu(event: Event) {
 

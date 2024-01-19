@@ -11,6 +11,9 @@ export default class Dxy {
 
 	private frameHandle: number = -1;
 
+	private width = -1;
+	private height = -1;
+
 	private readonly renderer: WebGL;
 
 	private readonly scene: Scene;
@@ -19,9 +22,8 @@ export default class Dxy {
 	public constructor(public readonly canvas = document.createElement('canvas')) {
 
 		this.renderer = new WebGL(canvas);
-
+		this.camera = new Camera(canvas);
 		this.scene = new Scene();
-		this.camera = new Camera();
 
 		this.startAnimationFrame();
 
@@ -36,9 +38,7 @@ export default class Dxy {
 		}
 
 		const scope = this;
-
 		let _elapsed = 0, _delta = 0;
-		let _width = -1, _height = -1;
 
 		function frameCallback(time: number): void {
 
@@ -48,27 +48,32 @@ export default class Dxy {
 			_delta = time - _elapsed;
 			_elapsed = time;
 
-			if (_width !== scope.canvas.clientWidth || _height !== scope.canvas.clientHeight) {
-
-				_width = scope.canvas.clientWidth;
-				_height = scope.canvas.clientHeight;
-
-				scope.canvas.width = _width;
-				scope.canvas.height = _height;
-
-				scope.camera.aspect = _width / _height;
-				scope.camera.updateProjectionMatrix();
-
-				scope.renderer.state.setViewport(0, 0, _width, _height);
-
-			}
-
-			scope.onRenderBefor(_delta);
-			scope.renderer.render(scope.scene, scope.camera);
+			scope.animate(_delta);
 
 		}
 
 		this.frameHandle = requestAnimationFrame(frameCallback);
+
+	}
+
+	private animate(delta: number): void {
+
+		if (this.width !== this.canvas.clientWidth || this.height !== this.canvas.clientHeight) {
+
+			this.width = this.canvas.clientWidth;
+			this.height = this.canvas.clientHeight;
+
+			this.canvas.width = this.width;
+			this.canvas.height = this.height;
+
+			this.camera.aspect = this.width / this.height;
+			this.camera.updateProjectionMatrix();
+
+			this.renderer.state.setViewport(0, 0, this.width, this.height);
+
+		}
+
+		this.renderer.render(this.scene, this.camera);
 
 	}
 
@@ -78,8 +83,6 @@ export default class Dxy {
 		this.frameHandle = -1;
 
 	}
-
-	public onRenderBefor(delta: number): void { }
 
 	public loadGLB(url: string, onLoad: Function): void {
 

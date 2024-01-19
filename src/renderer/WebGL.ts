@@ -1,4 +1,3 @@
-import { BgMaterial } from "../materials/BgMaterial";
 import { Material, Uniform } from "../materials/Material";
 import { Attribute } from "../modules/Attribute";
 import { Geometry } from "../modules/Geometry";

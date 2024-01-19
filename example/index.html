@@ -42,15 +42,6 @@
 
 		dxy.camera.position.set(0, 0, 10);
 
-		let a = 0;
-
-		dxy.onRenderBefor = function (delta) {
-
-			a = (a + delta);
-			dxy.scene.rotation.setEuler(a, a, a);
-
-		}
-
 		window.dxy = dxy;
 
 	</script>

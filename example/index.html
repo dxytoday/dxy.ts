@@ -4,33 +4,26 @@
 <head>
 	<meta charset="UTF-8" />
 
-	<link rel="shortcut icon " type="images/x-icon" href="favicon.ico">
-
 	<title>dxy.ts</title>
 
 	<style>
 		* {
 			box-sizing: border-box;
+			margin: 0;
+			padding: 0;
 		}
 
 		body {
-			margin: 0;
-			background-color: #aaa;
+			background-color: #999;
 		}
 
 		#canvas {
 			border: 1px solid black;
-			display: block;
-
-			width: 1366px;
-			height: 768px;
-
-			position: absolute;
-			top: 0;
-			bottom: 0;
-			left: 0;
-			right: 0;
-			margin: auto;
+			background-color: #555;
+			width: 700px;
+			height: 700px;
+			margin-top: 20px;
+			margin-left: 20px;
 		}
 	</style>
 </head>
@@ -39,25 +32,24 @@
 	<canvas id="canvas"></canvas>
 
 	<script type="module">
+		import Dxy from "../dist/dxy.js";
 
-		import DXY from "../dist/dxy.js";
+		const canvas = document.getElementById("canvas");
+		const dxy = new Dxy(canvas);
 
-		const dxy = new DXY(document.getElementById("canvas"));
+		dxy.setBackground('./resources/textures/cubeMap/Bridge2/negz.jpg', 'image');
+		dxy.loadGLB('./resources/models/cube.glb');
 
-		dxy.setBackground({ r: 0, g: 0, b: 0 });
-		dxy.setCamera({ translation: { x: 0, y: 0, z: 5 }, target: { x: 0, y: 0, z: 0 } });
-		dxy.setAmbient(0.3);
-		dxy.setSpotLight(
+		dxy.camera.position.set(0, 0, 10);
 
-			{
-				translation: { x: 1, y: 1, z: 1 },
-				brightness: 0.7,
-				cutOff: { x: 0, y: 45 },
-			}
+		let a = 0;
 
-		);
+		dxy.onRenderBefor = function (delta) {
 
-		dxy.loadGLB('./models/glb/box.glb');
+			a = (a + delta);
+			dxy.scene.rotation.setEuler(a, a, a);
+
+		}
 
 		window.dxy = dxy;
 

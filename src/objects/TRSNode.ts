@@ -1,161 +1,89 @@
-import { Matrix4 } from "../struct/Matrix4";
-import { TRSObject } from "./TRSObject";
+import { Matrix4 } from "../structs/Matrix4";
+import { Quaternion } from "../structs/Quaternion";
+import { Vector3 } from "../structs/Vector3";
+import { EventObject } from "../modules/EventObject";
 
-export class TRSNode extends TRSObject {
+export class TRSNode extends EventObject {
 
-	public parent: TRSNode | undefined;
-	public readonly children: TRSNode[] = [];
+    public name = ''
 
-	public readonly worldMatrix = new Matrix4();
+    public readonly position = new Vector3(0, 0, 0);
+    public readonly rotation = new Quaternion(0, 0, 0, 1);
+    public readonly scale = new Vector3(1, 1, 1);
 
-	public updateWorldMatrix(): void {
+    public readonly localMatrix = new Matrix4();
+    public readonly worldMatrix = new Matrix4();
 
-		this.updateMatrix();
+    public parent: TRSNode | undefined;
+    public readonly children: TRSNode[] = [];
 
-		if (this.parent === undefined) {
+    public visible = true;
 
-			this.worldMatrix.copy(this.matrix);
+    public updateMatrix(updateParents?: boolean, updateChildren?: boolean): void {
 
-		} else {
+        if (updateParents && this.parent) {
 
-			this.worldMatrix.multiplyMatrices(this.parent.worldMatrix, this.matrix);
+            this.parent.updateMatrix(true, false);
 
-		}
+        }
 
-	}
+        this.localMatrix.compose(this.position, this.rotation, this.scale);
+        this.worldMatrix.set(this.localMatrix);
 
-	public add(node: TRSNode): TRSNode | undefined {
+        if (this.parent) {
 
-		if (node === undefined) {
+            this.worldMatrix.multiply(this.parent.worldMatrix);
 
-			return;
+        }
 
-		}
+        if (updateChildren) {
 
-		if (node === this) {
+            for (const child of this.children) {
 
-			return;
+                child.updateMatrix(false, true);
 
-		}
+            }
 
-		if (node.parent !== undefined) {
+        }
 
-			node.parent.remove(node);
+    }
 
-		}
+    public add(node: TRSNode): TRSNode {
 
-		node.parent = this;
-		this.children.push(node);
+        if (node !== this) {
 
-		return this;
+            if (node.parent) {
 
-	}
+                node.parent.remove(node);
 
-	public remove(node: TRSNode): TRSNode | undefined {
+            }
 
-		if (node === undefined) {
+            node.parent = this;
+            this.children.push(node);
 
-			return;
+        }
 
-		}
+        return this;
 
-		if (node === this) {
+    }
 
-			return;
+    public remove(node: TRSNode): TRSNode {
 
-		}
+        if (node !== this) {
 
-		const index = this.children.indexOf(node);
+            const index = this.children.indexOf(node);
 
-		if (index === -1) {
+            if (index !== -1) {
 
-			return;
+                node.parent = undefined;
+                this.children.splice(index, 1);
 
-		}
+            }
 
-		node.parent = undefined;
-		this.children.splice(index, 1);
+        }
 
-		return this;
+        return this;
 
-	}
-
-	public get(name: string): TRSNode | undefined {
-
-		for (const child of this.children) {
-
-			if (child.name !== name) {
-
-				continue;
-
-			}
-
-			return child;
-
-		}
-
-	}
-
-	public clear(): void {
-
-		for (const child of this.children) {
-
-			child.parent = undefined;
-
-		}
-
-		this.children.length = 0;
-
-	}
-
-	public traverse(callback: Function): boolean {
-
-		let result: boolean = callback(this);
-
-		if (result === false) return result;
-
-		for (const child of this.children) {
-
-			result = child.traverse(callback);
-
-			if (result === false) return result;
-
-		}
-
-		return true;
-
-	}
-
-	[Symbol.iterator]() {
-
-		const array = this.children.slice();
-
-		let index = 0;
-
-		const result: { done: boolean, value?: TRSNode } = { done: false, value: undefined };
-
-		return {
-
-			next: () => {
-
-				if (index < array.length) {
-
-					result.done = false;
-					result.value = array[index++];
-
-				} else {
-
-					result.done = true;
-					result.value = undefined;
-
-				}
-
-				return result;
-
-			}
-
-		}
-
-	}
+    }
 
 }

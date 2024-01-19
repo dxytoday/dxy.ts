@@ -1,134 +1,91 @@
-import { Context } from "./Context";
 import { GLBLoader } from "./loaders/GLBLoader";
-import { Entity } from "./objects/Entity";
+import { ImageLoader } from "./loaders/ImageLoader";
+import { Texture } from "./modules/Texture";
+import { Camera } from "./objects/Camera";
+import { Scene } from "./objects/Scene";
 import { TRSNode } from "./objects/TRSNode";
-import { Attribute } from "./objects/modules/Attribute";
-import { Geometry } from "./objects/modules/Geometry";
-import { Material, MeshMaterial } from "./objects/modules/Material";
-import { Texture } from "./objects/modules/Texture";
-import { Vector3 } from "./struct/Vector3";
+import { WebGL } from "./renderer/WebGL";
+import { Color } from "./structs/Color";
 
-/** 接口类 */
 export default class Dxy {
 
-	private context: Context;
+	private frameHandle: number = -1;
 
-	public constructor(public canvas = document.createElement('canvas')) {
+	private readonly renderer: WebGL;
 
-		this.context = new Context(canvas);
+	private readonly scene: Scene;
+	private readonly camera: Camera;
+
+	public constructor(public readonly canvas = document.createElement('canvas')) {
+
+		this.renderer = new WebGL(canvas);
+
+		this.scene = new Scene();
+		this.camera = new Camera();
+
+		this.startAnimationFrame();
 
 	}
 
-	public setBackground(color: any): void {
+	private startAnimationFrame(): void {
 
-		if (!color) {
+		if (this.frameHandle !== -1) {
 
 			return;
 
 		}
 
-		const r = color.r / 255;
-		const g = color.g / 255;
-		const b = color.b / 255;
-		const a = color.a === undefined ? 1 : color.a / 255;
+		const scope = this;
 
-		this.context.renderer.setClearColor(r, g, b, a);
+		let _elapsed = 0, _delta = 0;
+		let _width = -1, _height = -1;
+
+		function frameCallback(time: number): void {
+
+			scope.frameHandle = requestAnimationFrame(frameCallback);
+
+			time /= 1000;
+			_delta = time - _elapsed;
+			_elapsed = time;
+
+			if (_width !== scope.canvas.clientWidth || _height !== scope.canvas.clientHeight) {
+
+				_width = scope.canvas.clientWidth;
+				_height = scope.canvas.clientHeight;
+
+				scope.canvas.width = _width;
+				scope.canvas.height = _height;
+
+				scope.camera.aspect = _width / _height;
+				scope.camera.updateProjectionMatrix();
+
+				scope.renderer.state.setViewport(0, 0, _width, _height);
+
+			}
+
+			scope.onRenderBefor(_delta);
+			scope.renderer.render(scope.scene, scope.camera);
+
+		}
+
+		this.frameHandle = requestAnimationFrame(frameCallback);
 
 	}
 
-	public setCamera(camera: any): void {
+	public destroy() {
 
-		if (!camera) {
-
-			return;
-
-		}
-
-		let needsUpdate = false;
-
-		if (camera.translation !== undefined) {
-
-			this.context.camera.translation.x = camera.translation.x;
-			this.context.camera.translation.y = camera.translation.y;
-			this.context.camera.translation.z = camera.translation.z;
-
-			needsUpdate = true;
-
-		}
-
-		if (camera.target !== undefined) {
-
-			const target = new Vector3();
-			target.x = camera.target.x;
-			target.y = camera.target.y;
-			target.z = camera.target.z;
-
-			this.context.camera.lookAt(target)
-
-			needsUpdate = true;
-
-		}
-
-		if (needsUpdate) {
-
-			this.context.camera.updateViewMatrix();
-
-		}
+		cancelAnimationFrame(this.frameHandle);
+		this.frameHandle = -1;
 
 	}
 
-	public setAmbient(intensity: number): void {
-
-		if (intensity === undefined) {
-
-			return;
-
-		}
-
-		this.context.ambientLight.lightIntensity = intensity;
-
-		this.context.ambientLight.update();
-
-	}
-
-	public setSpotLight(light: any): void {
-
-		if (light.translation !== undefined) {
-
-			this.context.spotLight.translation.x = light.translation.x;
-			this.context.spotLight.translation.y = light.translation.y;
-			this.context.spotLight.translation.z = light.translation.z;
-
-		}
-
-		if (light.brightness !== undefined) {
-
-			this.context.spotLight.lightIntensity = light.brightness;
-
-		}
-
-		if (light.cutOff !== undefined) {
-
-			this.context.spotLight.cutOff.x = Math.cos(light.cutOff.x / 180 * Math.PI);
-			this.context.spotLight.cutOff.y = Math.cos(light.cutOff.y / 180 * Math.PI);
-
-		}
-
-		this.context.spotLight.update();
-
-	}
+	public onRenderBefor(delta: number): void { }
 
 	public loadGLB(url: string, onLoad: Function): void {
 
-		if (!url) {
+		GLBLoader.load(url, (object: TRSNode) => {
 
-			return;
-
-		}
-
-		GLBLoader.load(url, (scene: TRSNode) => {
-
-			this.context.scene.add(scene);
+			this.scene.add(object);
 
 			onLoad && onLoad(true);
 
@@ -136,140 +93,25 @@ export default class Dxy {
 
 	}
 
-	public addThreeObject(threeObject: any): void {
+	public setBackground(value: string, type = ''): void {
 
-		const node = _convertThreeObject(threeObject);
+		switch (type) {
 
-		this.context.scene.add(node);
+			case '':
 
-	}
+				this.scene.setBackgroundColor(value);
+				break;
 
-}
+			case 'image':
 
-function _convertThreeObject(threeObject: any): TRSNode {
+				ImageLoader.load(value, (image: HTMLImageElement) => this.scene.setBackgroundImage(image));
+				break;
 
-	function fromThreeGeometry(threeGeometry: any): Geometry {
-
-		const geometry = new Geometry();
-
-		for (const key in threeGeometry.attributes) {
-
-			const threeAttribute = threeGeometry.attributes[key];
-
-			const attribute = new Attribute(threeAttribute.array, threeAttribute.itemSize, threeAttribute.normalized);
-
-			geometry.setAttribute(key, attribute);
+			case 'skybox':
+				break;
 
 		}
 
-		geometry.groups.push(...threeGeometry.groups);
-
-		const threeIndex = threeGeometry.index;
-
-		geometry.indices = new Attribute(threeIndex.array, threeIndex.itemSize, threeIndex.normalized);
-
-		return geometry;
-
 	}
-
-	function fromThreeMaterial(threeMaterial: any): Material {
-
-		const material = new MeshMaterial();
-
-		material.opacity = threeMaterial.opacity;
-
-		material.color.r = threeMaterial.color.r;
-		material.color.g = threeMaterial.color.g;
-		material.color.b = threeMaterial.color.b;
-
-		if (threeMaterial.map !== null) {
-
-			const texture = new Texture(threeMaterial.map.image);
-
-			// texture.magFilter = threeMaterial.map.magFilter;
-			// texture.minFilter = threeMaterial.map.minFilter;
-			// texture.wrapS = threeMaterial.map.wrapS;
-			// texture.wrapT = threeMaterial.map.wrapT;
-
-			// texture.flipY = threeMaterial.map.flipY;
-			// texture.unpackAlignment = threeMaterial.map.unpackAlignment;
-			// texture.generateMipmap = threeMaterial.map.generateMipmaps;
-
-			material.map = texture;
-
-		}
-
-		return material;
-
-	}
-
-	function setThreeObject(node: TRSNode, threeObject: any): void {
-
-		node.name = threeObject.name;
-
-		node.translation.x = threeObject.position.x;
-		node.translation.y = threeObject.position.y;
-		node.translation.z = threeObject.position.z;
-
-		node.scale.x = threeObject.scale.x;
-		node.scale.y = threeObject.scale.y;
-		node.scale.z = threeObject.scale.z;
-
-		node.rotation.x = threeObject.quaternion.x;
-		node.rotation.y = threeObject.quaternion.y;
-		node.rotation.z = threeObject.quaternion.z;
-		node.rotation.w = threeObject.quaternion.w;
-
-	}
-
-	function fromThreeObject(threeObject: any): TRSNode {
-
-		let node: TRSNode;
-
-		if (threeObject.isMesh === true) {
-
-			const geometry = fromThreeGeometry(threeObject.geometry);
-
-			let material: Material | Material[];
-
-			if (Array.isArray(threeObject.material)) {
-
-				material = [];
-
-				for (const threeMaterial of threeObject.material) {
-
-					material.push(fromThreeMaterial(threeMaterial));
-
-				}
-
-			} else {
-
-				material = fromThreeMaterial(threeObject.material);
-
-			}
-
-			node = new Entity(geometry, material);
-
-		} else {
-
-			node = new TRSNode();
-
-		}
-
-		setThreeObject(node, threeObject);
-
-		for (const threeChild of threeObject.children) {
-
-			const child = fromThreeObject(threeChild);
-
-			node.add(child);
-
-		}
-
-		return node;
-
-	}
-
-	return fromThreeObject(threeObject);
 
 }

@@ -1,37 +1,35 @@
-import { Util } from "../bases/Util";
-
 export class ImageLoader {
 
-	public static load(url: string, onLoad?: Function): Promise<HTMLImageElement> {
+    public static load(url: string, onLoad?: Function): Promise<HTMLImageElement> {
 
-		return new Promise(
+        return new Promise(
 
-			function (resolve, reject) {
+            function (resolve, reject) {
 
-				const image = document.createElement('img');
+                const image = document.createElement('img');
 
-				image.onload = () => {
+                image.onload = () => {
 
-					onLoad && onLoad(image);
+                    onLoad && onLoad(image);
 
-					resolve(image);
+                    resolve(image);
 
-				};
+                };
 
-				image.onerror = () => {
+                image.onerror = () => {
 
-					onLoad && onLoad(undefined);
+                    onLoad && onLoad(undefined);
 
-					reject();
+                    reject();
 
-				};
+                };
 
-				image.src = url;
+                image.src = url;
 
-			}
+            }
 
-		);
+        );
 
-	}
+    }
 
 }

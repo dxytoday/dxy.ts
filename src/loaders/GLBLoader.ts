@@ -1,1016 +1,794 @@
+import { Material } from "../materials/Material";
+import { PBRMaterial } from "../materials/PBRMaterial";
+import { Attribute, TypedArray } from "../modules/Attribute";
+import { Geometry } from "../modules/Geometry";
+import { Texture } from "../modules/Texture";
+import { Mesh } from "../objects/Mesh";
 import { TRSNode } from "../objects/TRSNode";
-import { Entity } from "../objects/Entity";
-import { Attribute } from "../objects/modules/Attribute";
-import { Geometry } from "../objects/modules/Geometry";
-import { Material, MeshMaterial } from "../objects/modules/Material";
-import { Texture } from "../objects/modules/Texture";
-import { Util } from "../bases/Util";
-import { Vector2 } from "../struct/Vector2";
-import { LoggerProxy } from "../bases/LoggerProxy";
-
-const _textDecoder = /*@__PURE__*/ new TextDecoder();
-
-export class GLBLoader {
-
-	public static async load(url: string, onLoad?: Function): Promise<TRSNode> {
-
-		const glb = new GBL(url, onLoad);
-
-		// glb.mergeGeometry = true;
-
-		return glb.getScene();
-
-	}
-
-}
+import { WebGLConstants } from "../renderer/WebGLConstants";
 
 class GLBHelper {
 
-	public static getItemSize(type: string): number {
+    public static readonly textDecoder = new TextDecoder();
+    public static readonly material = new PBRMaterial();
 
-		switch (type) {
+    public static readonly filterMapping = new Map([
 
-			case 'SCALAR': return 1;
+        [9728, WebGLConstants.NEAREST],
+        [9729, WebGLConstants.LINEAR],
+        [9984, WebGLConstants.NEAREST_MIPMAP_NEAREST],
+        [9985, WebGLConstants.LINEAR_MIPMAP_NEAREST],
+        [9986, WebGLConstants.NEAREST_MIPMAP_LINEAR],
+        [9987, WebGLConstants.LINEAR_MIPMAP_LINEAR],
 
-			case 'VEC2': return 2;
+    ]);
 
-			case 'VEC3': return 3;
+    public static readonly wrapMapping = new Map([
 
-			case 'VEC4': return 4;
+        [10497, WebGLConstants.REPEAT],
+        [33071, WebGLConstants.CLAMP_TO_EDGE],
+        [33648, WebGLConstants.MIRRORED_REPEAT],
 
-			case 'MAT2': return 4;
+    ]);
 
-			case 'MAT3': return 9;
+    public static readonly sizeMapping = new Map([
 
-			case 'MAT4': return 16;
+        ['SCALAR', 1],
+        ['VEC2', 2],
+        ['VEC3', 3],
+        ['VEC4', 4],
+        ['MAT2', 2],
+        ['MAT3', 9],
+        ['MAT4', 16],
 
-			default: return 0;
+    ]);
 
-		}
+    public static getGeometryKey(primitive: any = {}): string {
 
-	}
+        const geometryKey = [`indices:${primitive.indices};`]
 
-	public static getGeometryKey(glbPrimitive: GLBPrimitive): string {
+        for (const key in primitive.attributes) {
 
-		const geometryKey = [`indices:${glbPrimitive.indices};`]
+            const index = primitive.attributes[key];
 
-		for (const key in glbPrimitive.attributes) {
+            geometryKey.push(`${key}:${index};`);
 
-			const index = glbPrimitive.attributes[key];
+        }
 
-			geometryKey.push(`${key}:${index};`);
+        geometryKey.push(`mode:${primitive.mode};`)
 
-		}
+        return geometryKey.join();
 
-		geometryKey.push(`mode:${glbPrimitive.mode};`)
+    }
 
-		return geometryKey.join();
+    public static getAttributeName(name: string): string {
 
-	}
+        switch (name) {
 
-	public static getAttributeName(name: string): string {
+            case 'POSITION': return 'position';
 
-		switch (name) {
+            case 'NORMAL': return 'normal';
 
-			case 'POSITION': return 'position';
+            case 'TANGENT': return 'tangent';
 
-			case 'NORMAL': return 'normal';
+            case 'TEXCOORD_0': return 'uv';
 
-			case 'TANGENT': return 'tangent';
+            case 'TEXCOORD_1': return 'uv2';
 
-			case 'TEXCOORD_0': return 'uv';
+            case 'COLOR_0': return 'color';
 
-			case 'TEXCOORD_1': return 'uv2';
+            case 'WEIGHTS_0': return 'skinWeight';
 
-			case 'COLOR_0': return 'color';
+            case 'JOINTS_0': return 'skinIndex';
 
-			case 'WEIGHTS_0': return 'skinWeight';
+            default: return name.toLowerCase();
 
-			case 'JOINTS_0': return 'skinIndex';
+        }
 
-			default: return name.toLowerCase();
+    }
 
-		}
+    public static createTypedArray(type: number, lenOrBuf: ArrayBuffer | number, offset?: number, length?: number): TypedArray {
 
-	}
+        let constructor: any;
 
-	public static getFilter(type: number): number {
+        switch (type) {
 
-		switch (type) {
+            case 5120:
 
-			case 9728:
+                constructor = ArrayBuffer;
+                break;
 
-				return Util.NEAREST;
+            case 5121:
 
-			case 9729:
+                constructor = Uint8Array;
+                break;
 
-				return Util.LINEAR;
+            case 5122:
 
-			case 9984:
+                constructor = Int16Array;
+                break;
 
-				return Util.NEAREST_MIPMAP_NEAREST;
+            case 5123:
 
-			case 9985:
+                constructor = Uint16Array;
+                break;
 
-				return Util.LINEAR_MIPMAP_NEAREST;
+            case 5125:
 
-			case 9986:
+                constructor = Uint32Array;
+                break;
 
-				return Util.NEAREST_MIPMAP_LINEAR;
+            case 5126:
+            default:
 
-			case 9987:
+                constructor = Float32Array;
 
-				return Util.LINEAR_MIPMAP_LINEAR;
+        }
 
-		}
+        if (lenOrBuf instanceof ArrayBuffer) {
 
-		return undefined;
+            return new constructor(lenOrBuf, offset, length);
 
-	}
+        } else {
 
-	public static getWrap(type: number): number {
+            return new constructor(lenOrBuf);
 
-		switch (type) {
+        }
 
-			case 33071:
+    }
 
-				return Util.CLAMP_TO_EDGE;
+    public static mergeGeometries(geometries: Geometry[]): Geometry {
 
-			case 33648:
+        const merge = new Geometry();
 
-				return Util.MIRRORED_REPEAT;
+        if (!geometries.length || !geometries[0].attributes.size) {
 
-			case 10497:
+            return merge;
 
-				return Util.REPEAT;
+        }
 
-		}
+        const usedIndices = geometries[0].indices !== undefined;
+        const usedNames = Array.from(geometries[0].attributes.keys());
 
-		return undefined;
+        const allAttributes: Attribute[][] = [];
 
-	}
+        let startIndex = 0;
 
-	public static getTypeArray(type: number, buffer: ArrayBuffer, offset: number, length: number): TypedArray {
+        for (let ii = 0, li = geometries.length; ii < li; ii++) {
 
-		switch (type) {
+            const geometry = geometries[ii];
+            const attributes: Attribute[] = [];
 
-			case 5120:
+            if (usedIndices) {
 
-				return new Int8Array(buffer, offset, length);
+                if (!geometry.indices) {
 
-			case 5121:
+                    console.warn(`Dxy.GLBLoader : ${ii} 个几何体缺少索引数据 . `);
+                    continue;
 
-				return new Uint8Array(buffer, offset, length);
+                }
 
-			case 5122:
+                attributes.push(geometry.indices);
 
-				return new Int16Array(buffer, offset, length);
+            }
 
-			case 5123:
+            let isBreak = false;
 
-				return new Uint16Array(buffer, offset, length);
+            for (const name of usedNames) {
 
-			case 5125:
+                const attribute = geometry.getAttribute(name)
 
-				return new Uint32Array(buffer, offset, length);
+                if (!attribute) {
 
-			case 5126:
+                    isBreak = true;
+                    break;
 
-				return new Float32Array(buffer, offset, length);
+                }
 
-		}
+                attributes.push(attribute);
 
-	}
+            }
 
-	public static mergeGeometries(geometries: Geometry[], templateIndex = 0): Geometry {
+            if (isBreak) {
 
-		//#region 设置模板数据
+                console.warn(`Dxy.GLBLoader : 第 ${ii} 个几何体缺少属性 . `);
+                continue;
 
-		const merge = new Geometry();
+            }
 
-		if (geometries.length === 0) {
+            const count = attributes[0].count;
 
-			return merge;
+            merge.addGroup(startIndex, count, allAttributes.length);
+            startIndex += count;
 
-		}
+            allAttributes.push(attributes);
 
-		if (geometries.length >= templateIndex) {
+        }
 
-			templateIndex = geometries.length - 1;
+        if (usedIndices) {
 
-		}
+            const data: number[] = [];
+            let offset = 0;
 
-		const template = geometries[templateIndex];
+            for (const attributes of allAttributes) {
 
-		if (template.attributes.size === 0) {
+                const indices = attributes.shift() as Attribute;
 
-			return merge;
+                for (let ii = 0, li = indices.count; ii < li; ii++) {
 
-		}
+                    data.push(indices.getX(ii) + offset);
 
-		if (templateIndex !== 0) {
+                }
 
-			// 模板几何体调整到第 0 个
-			geometries.sort(e => e === template ? -1 : 1);
+                offset += attributes[0].count;
 
-		}
+            }
 
-		const usedIndices = template.indices !== undefined;
+            merge.setIndices(data);
 
-		const usedNames = Array.from(template.attributes.keys());
+        }
 
-		if (usedNames.includes('position') === true) {
+        while (usedNames.length > 0) {
 
-			// 'position' 调整到第 0 个
-			usedNames.sort(n => n === 'position' ? -1 : 1);
+            const attributes = allAttributes.map(e => e.shift()) as Attribute[];
+            const name = usedNames.shift() as string;
 
-		}
+            const attribute = GLBHelper.mergeAttributes(attributes);
 
-		//#endregion
+            if (attribute) {
 
-		//#region 获取缓冲属性
+                merge.setAttribute(name, attribute);
 
-		const allAttributes: Attribute[][] = [];
+            }
 
-		let startIndex = 0;
+        }
 
-		for (let ii = 0, li = geometries.length; ii < li; ii++) {
+        return merge;
 
-			const geometry = geometries[ii];
+    }
 
-			//#region 检查索引数据设置是否正确
+    public static mergeAttributes(attributes: Attribute[]): Attribute | undefined {
 
-			if (usedIndices === true && geometry.indices === undefined) {
+        if (attributes.length === 0) {
 
-				LoggerProxy.warn(`Dxy.Geometry.merge：第 ${ii} 个几何体缺少索引数据。`);
-				return merge;
+            return undefined;
 
-			}
+        }
 
-			//#endregion
+        const dataType = attributes[0].dataType;
+        const itemSize = attributes[0].itemSize;
+        const normalized = attributes[0].normalized;
 
-			const attributes: Attribute[] = [];
+        let arrayLen = 0;
 
-			//#region 获取所有缓冲属性
+        for (let ii = 0, li = attributes.length; ii < li; ii++) {
 
-			for (const name of usedNames) {
+            const attribute = attributes[ii];
 
-				const attribute = geometry.getAttribute(name);
+            if (
 
-				if (attribute === undefined) {
+                attribute.dataType !== dataType ||
+                attribute.itemSize !== itemSize ||
+                attribute.normalized !== normalized
 
-					LoggerProxy.warn(`Dxy.Geometry.merge：第 ${ii} 个几何体缺少索引数据。`);
-					return merge;
+            ) {
 
-				}
+                console.warn(`Dxy.GLBLoader : 第 ${ii} 个缓冲属性类型错误 . `);
+                return undefined;
 
-				attributes.push(attribute);
+            }
 
-			}
+            arrayLen += attribute.array.length;
 
-			//#endregion
+        }
 
-			//#region 缓冲属性数量是否一致
+        const array = GLBHelper.createTypedArray(dataType, arrayLen);
+        let offset = 0;
 
-			if (attributes.length !== usedNames.length) {
+        for (const attribute of attributes) {
 
-				LoggerProxy.warn(`Dxy.Geometry.merge：第 ${ii} 个几何体与模板的属性数量不一致。`);
-				return merge;
+            array.set(attribute.array, offset);
+            offset += attribute.array.length;
 
-			}
+        }
 
-			//#endregion
+        return new Attribute(array, itemSize, normalized);
 
-			//#region 设置分组渲染
-
-			let count = 0
-
-			if (usedIndices === true) {
-
-				attributes.push(geometry.indices); // 记录索引数据用于合并
-				count = geometry.indices.count;
-
-			} else {
-
-				count = attributes[0].count;
-
-			}
-
-			merge.addGroup(startIndex, count, allAttributes.length);
-			startIndex += count;
-
-			//#endregion
-
-			allAttributes.push(attributes); // 记录缓冲属性
-
-		}
-
-		//#endregion
-
-		//#region 合并索引数据
-
-		if (usedIndices === true) {
-
-			const data: number[] = [];
-
-			let offset = 0;
-
-			for (const attributes of allAttributes) {
-
-				const indices = attributes.pop();
-
-				for (let ii = 0; ii < indices.count; ii++) {
-
-					data.push(indices.getX(ii) + offset);
-
-				}
-
-				offset += attributes[0].count;
-
-			}
-
-			merge.setIndices(data);
-
-		}
-
-		//#endregion
-
-		//#region 合并缓冲属性
-
-		while (usedNames.length > 0) {
-
-			const attributes = allAttributes.map(e => e.shift());
-
-			const name = usedNames.shift();
-			const attribute = GLBHelper.mergeAttributes(attributes);
-
-			if (attribute === undefined) {
-
-				continue;
-
-			}
-
-			merge.setAttribute(name, attribute);
-
-		}
-
-		//#endregion
-
-		return merge;
-
-	}
-
-	public static mergeAttributes(attributes: Attribute[], templateIndex = 0): Attribute {
-
-		if (attributes.length === 0) {
-
-			return undefined;
-
-		}
-
-		if (attributes.length >= templateIndex) {
-
-			templateIndex = attributes.length - 1;
-
-		}
-
-		const template = attributes[templateIndex];
-
-		if (templateIndex !== 0) {
-
-			// 模板缓冲属性调整到第 0 个
-			attributes.sort(e => e === template ? -1 : 1);
-
-		}
-
-		let arrayLength = 0;
-
-		for (let ii = 0, li = attributes.length; ii < li; ii++) {
-
-			const attribute = attributes[ii];
-
-			if (attribute.array.constructor !== template.array.constructor) {
-
-				LoggerProxy.warn(`Dxy.Attribute.merge：第 ${ii} 个缓冲属性与模板的类型不一致。`);
-				return undefined;
-
-			}
-
-			if (attribute.itemSize !== template.itemSize) {
-
-				LoggerProxy.warn(`Dxy.Attribute.merge：第 ${ii} 个缓冲属性与模板的 itemSize 不一致。`);
-				return undefined;
-
-			}
-
-			if (attribute.normalized !== template.normalized) {
-
-				LoggerProxy.warn(`Dxy.Attribute.merge：第 ${ii} 个缓冲属性与模板的 normalized 不一致。`);
-				return undefined;
-
-			}
-
-			arrayLength += attribute.array.length;
-
-		}
-
-		let typedArray: TypedArray = new (template.array.constructor as any)(arrayLength)
-
-		let offset = 0;
-
-		for (const attribute of attributes) {
-
-			typedArray.set(attribute.array, offset);
-
-			offset += attribute.array.length;
-
-		}
-
-		return new Attribute(typedArray, template.itemSize, template.normalized);
-
-	}
+    }
 
 }
 
 class GBL {
 
-	public mergeGeometry = false;
+    private objectDef: any;
+    private bufferData: ArrayBuffer | undefined;
+    private geometryCache = new Map<string, Geometry>();
 
-	private content: string;
-	private glbObject: GLBObject;
-	private body: ArrayBuffer;
+    public constructor(
 
-	private geometries = new Map<string, Geometry>();
+        private url: string,
+        private onLoad?: Function
 
-	public constructor(
+    ) { }
 
-		private url: string,
-		private onLoad?: Function
+    public async parse(): Promise<TRSNode | undefined> {
 
-	) { }
+        await this.requestData();
 
-	public async getScene(): Promise<TRSNode> {
+        let scene: TRSNode | undefined;
 
-		await this.requestData();
+        if (this.objectDef.scenes) {
 
-		const scene = await this.loadScene();
+            scene = await this.loadScene(this.objectDef.scene);
 
-		if (this.onLoad instanceof Function) {
+        }
 
-			this.onLoad(scene);
+        if (typeof this.onLoad === 'function') {
 
-		}
+            this.onLoad(scene);
 
-		return scene;
+        }
 
-	}
+        return scene;
 
-	private async requestData() {
+    }
 
-		const response = await fetch(this.url);
+    private async requestData(): Promise<void> {
 
-		const data = await response.arrayBuffer();
-		const dataView = new DataView(data);
+        const response = await fetch(this.url);
 
-		// const magic = _textDecoder.decode(new Uint8Array(data, 0, 4)); // 'glTF'
-		// const version = dataView.getUint32(4, true); // 2
+        const data = await response.arrayBuffer();
+        const dataView = new DataView(data);
 
-		const length = dataView.getUint32(8, true);
+        // const magic = _textDecoder.decode(new Uint8Array(data, 0, 4)); // 'glTF'
+        // const version = dataView.getUint32(4, true); // 2
 
-		let index = 12, chunkLength: number, chunkType: number;
-		let content: string, body: ArrayBuffer;
+        const length = dataView.getUint32(8, true);
 
-		while (index < length) {
+        let index = 12, chunkLength: number, chunkType: number;
+        let objectDef: string | undefined, bufferData: ArrayBuffer | undefined;
 
-			chunkLength = dataView.getUint32(index, true);
-			index += 4;
+        while (index < length) {
 
-			chunkType = dataView.getUint32(index, true);
-			index += 4;
+            chunkLength = dataView.getUint32(index, true);
+            index += 4;
 
-			// json
-			if (chunkType === 0x4E4F534A) {
+            chunkType = dataView.getUint32(index, true);
+            index += 4;
 
-				const contentArray = new Uint8Array(data, index, chunkLength);
+            // json
+            if (chunkType === 0x4E4F534A) {
 
-				content = _textDecoder.decode(contentArray);
+                const defData = new Uint8Array(data, index, chunkLength);
+                objectDef = GLBHelper.textDecoder.decode(defData);
 
-			}
+            }
 
-			// bin
-			else if (chunkType === 0x004E4942) {
+            // bin
+            else if (chunkType === 0x004E4942) {
 
-				body = data.slice(index, index + chunkLength);
+                bufferData = data.slice(index, index + chunkLength);
 
-			}
+            }
 
-			index += chunkLength;
+            index += chunkLength;
 
-		}
+        }
 
-		this.content = content;
-		this.glbObject = JSON.parse(content);
-		this.body = body;
+        this.objectDef = objectDef ? JSON.parse(objectDef) : {};
+        this.bufferData = bufferData;
 
-	}
+    }
 
-	private async loadScene(): Promise<TRSNode> {
+    private async loadScene(index: number): Promise<TRSNode> {
 
-		const sceneIndex = this.glbObject.scene;
-		const glbScene = this.glbObject.scenes[sceneIndex];
+        const sceneDef = this.objectDef.scenes[index];
 
-		const scene = new TRSNode();
-		scene.name = glbScene.name;
+        const scene = new TRSNode();
+        scene.name = sceneDef.name || '';
 
-		for (const nodeIndex of glbScene.nodes) {
+        for (const nodeIndex of sceneDef.nodes) {
 
-			const node = await this.loadNode(nodeIndex);
+            const node = await this.loadNode(nodeIndex);
+            scene.add(node);
 
-			if (node !== undefined) {
+        }
 
-				scene.add(node);
+        return scene;
 
-			}
+    }
 
-		}
+    private async loadNode(index: number): Promise<TRSNode> {
 
-		return scene;
+        const nodeDef = this.objectDef.nodes[index];
 
-	}
+        if (nodeDef.instance) {
 
-	private async loadNode(glbNodeIndex: number): Promise<TRSNode> {
+            return nodeDef.instance;
 
-		const glbNode = this.glbObject.nodes[glbNodeIndex];
+        }
 
-		if (glbNode.instance !== undefined) {
+        let node: TRSNode;
 
-			return glbNode.instance;
+        if (nodeDef.mesh !== undefined) {
 
-		}
+            node = await this.loadMesh(nodeDef.mesh);
 
-		if (glbNode.mesh === undefined) {
+        } else {
 
-			return;
+            node = new TRSNode();
 
-		}
+        }
 
-		const mesh = await this.loadMesh(glbNode.mesh);
+        node.name = nodeDef.name || '';
 
-		if (glbNode.translation !== undefined) {
+        if (nodeDef.translation !== undefined) {
 
-			mesh.translation.fromArray(glbNode.translation);
+            node.position.set(nodeDef.translation);
 
-		}
+        }
 
-		if (glbNode.rotation !== undefined) {
+        if (nodeDef.rotation !== undefined) {
 
-			mesh.rotation.fromArray(glbNode.rotation);
+            node.rotation.set(nodeDef.rotation);
 
-		}
+        }
 
-		if (glbNode.scale !== undefined) {
+        if (nodeDef.scale !== undefined) {
 
-			mesh.scale.fromArray(glbNode.scale);
+            node.scale.set(nodeDef.scale);
 
-		}
+        }
 
-		if (glbNode.children !== undefined) {
+        if (nodeDef.children !== undefined) {
 
-			for (const childIndex of glbNode.children) {
+            for (const childIndex of nodeDef.children) {
 
-				const child = await this.loadNode(childIndex);
+                const child = await this.loadNode(childIndex);
+                node.add(child);
 
-				mesh.add(child);
+            }
 
-			}
+        }
 
-		}
+        nodeDef.instance = node;
 
-		glbNode.instance = mesh;
+        return node;
 
-		return glbNode.instance;
+    }
 
-	}
+    private async loadMesh(index: number): Promise<Mesh> {
 
-	private async loadMesh(glbMeshIndex: number): Promise<Entity> {
+        const meshDef = this.objectDef.meshes[index];
 
-		const glbMesh = this.glbObject.meshes[glbMeshIndex];
+        if (meshDef.instance !== undefined) {
 
-		if (glbMesh.instance !== undefined) {
+            return meshDef.instance;
 
-			return glbMesh.instance;
+        }
 
-		}
+        const primitives = meshDef.primitives;
 
-		const glbPrimitives = glbMesh.primitives;
+        const geometryKeys: string[] = [];
+        const geometries = this.loadGeometries(primitives, geometryKeys);
 
-		const geometryKeys: string[] = [];
-		const geometries = this.loadGeometries(glbPrimitives, geometryKeys);
+        const materials = await this.loadMaterials(primitives);
 
-		const materials = await this.loadMaterials(glbPrimitives);
+        let mesh: Mesh;
 
-		let node: TRSNode;
+        if (geometries.length === 1) {
 
-		if (glbPrimitives.length === 1) {
+            mesh = new Mesh(geometries[0], materials[0]);
 
-			node = new Entity(geometries[0], materials[0]);
+        } else {
 
-		} else {
+            const key = geometryKeys.join('_');
+            let geometry = this.geometryCache.get(key);
 
-			if (this.mergeGeometry) {
+            if (!geometry) {
 
-				const key = geometryKeys.join('_');
+                geometry = GLBHelper.mergeGeometries(geometries);
+                this.geometryCache.set(key, geometry);
 
-				let geometry = this.geometries.get(key);
+            }
 
-				if (geometry === undefined) {
+            mesh = new Mesh(geometry, materials);
 
-					geometry = GLBHelper.mergeGeometries(geometries);
+        }
 
-					this.geometries.set(key, geometry);
+        meshDef.instance = mesh;
 
-				}
+        return mesh;
 
-				node = new Entity(geometry, materials);
+    }
 
-			} else {
+    private loadGeometries(primitives: any[], keys: string[]): Geometry[] {
 
-				node = new TRSNode();
+        const geometries: Geometry[] = [];
 
-				for (let ii = 0, li = glbPrimitives.length; ii < li; ii++) {
+        let geometry: Geometry | undefined;
 
-					const entity = new Entity(geometries[ii], materials[ii]);
-					entity.name = `${glbMesh.name}_${ii}`;
+        for (const primitive of primitives) {
 
-					node.add(entity);
+            const key = GLBHelper.getGeometryKey(primitive);
+            geometry = this.geometryCache.get(key);
 
-				}
+            if (!geometry) {
 
-			}
+                geometry = new Geometry();
 
-		}
+                for (const key in primitive.attributes) {
 
-		node.name = glbMesh.name;
+                    const attributeName = GLBHelper.getAttributeName(key);
 
-		glbMesh.instance = node;
+                    if (geometry.hasAttribute(attributeName)) {
 
-		return glbMesh.instance;
+                        continue;
 
-	}
+                    }
 
-	private loadGeometries(glbPrimitives: GLBPrimitive[], keys?: string[]): Geometry[] {
+                    const accessorIndex = primitive.attributes[key];
+                    const attribute = this.loadAttribute(accessorIndex);
 
-		const geometries: Geometry[] = [];
+                    geometry.setAttribute(attributeName, attribute);
 
-		let geometry: Geometry;
+                }
 
-		for (const glbPrimitive of glbPrimitives) {
+                if (primitive.indices !== undefined) {
 
-			const tuple = this.loadGeometry(glbPrimitive);
+                    const attribute = this.loadAttribute(primitive.indices);
+                    geometry.indices = attribute;
 
-			geometries.push(tuple[1]);
-			geometry = tuple[1];
+                }
 
-			if (keys !== undefined) {
+                this.geometryCache.set(key, geometry);
 
-				keys.push(tuple[0]);
+            }
 
-			}
+            keys.push(key);
+            geometries.push(geometry);
 
-		}
+        }
 
-		return geometries;
+        return geometries;
 
-	}
+    }
 
-	private loadGeometry(glbPrimitive: GLBPrimitive): [string, Geometry] {
+    private loadAttribute(index: number): Attribute {
 
-		const key = GLBHelper.getGeometryKey(glbPrimitive);
+        const accessorDef = this.objectDef.accessors[index];
 
-		let geometry = this.geometries.get(key);
+        const itemSize = GLBHelper.sizeMapping.get(accessorDef.type) || 0;
+        const type = accessorDef.componentType;
+        const count = accessorDef.count;
+        const offset = accessorDef.byteOffset || 0;
+        const normalized = accessorDef.normalized === true;
 
-		if (geometry !== undefined) {
+        const buffer = this.loadBufferView(accessorDef.bufferView);
+        const typedArray = GLBHelper.createTypedArray(type, buffer, offset, count * itemSize);
 
-			return [key, geometry];
+        return new Attribute(typedArray, itemSize, normalized);
 
-		}
+    }
 
-		geometry = new Geometry();
+    private async loadMaterials(primitives: any[]): Promise<Material[]> {
 
-		for (const key in glbPrimitive.attributes) {
+        const materials: Material[] = []
 
-			const attributeName = GLBHelper.getAttributeName(key);
+        for (const primitive of primitives) {
 
-			if (geometry.hasAttribute(attributeName)) {
+            if (primitive.material === undefined) {
 
-				continue;
+                materials.push(GLBHelper.material);
+                continue;
 
-			}
+            }
 
-			const index = glbPrimitive.attributes[key];
+            const materialDef = this.objectDef.materials[primitive.material];
 
-			const attribute = this.loadAttribute(index);
+            if (materialDef.instance) {
 
-			geometry.setAttribute(attributeName, attribute);
+                materials.push(materialDef.instance);
+                continue;
 
-		}
+            }
 
-		if (glbPrimitive.indices !== undefined) {
+            const material = new PBRMaterial();
+            materialDef.instance = material;
 
-			const attribute = this.loadAttribute(glbPrimitive.indices, true);
-			geometry.indices = attribute;
+            material.name = materialDef.name;
 
-		}
+            const pbr = materialDef.pbrMetallicRoughness;
 
-		this.geometries.set(key, geometry);
+            if (Array.isArray(pbr.baseColorFactor)) {
 
-		return [key, geometry];
+                material.color.set(pbr.baseColorFactor);
+                material.opacity = pbr.baseColorFactor[3];
 
-	}
+            }
 
-	private loadAttribute(glbAccessorIndex: number, isIndices = false): Attribute {
+            if (pbr.baseColorTexture !== undefined) {
 
-		const glbAccessor = this.glbObject.accessors[glbAccessorIndex];
+                const texture = await this.loadTexture(pbr.baseColorTexture.index);
+                material.map = texture;
 
-		if (!isIndices && glbAccessor.instance !== undefined) {
+            }
 
-			return glbAccessor.instance;
+            if (pbr.metallicFactor !== undefined) {
 
-		}
+                material.metalness = pbr.metallicFactor;
 
-		const buffer = this.loadBufferView(glbAccessor.bufferView);
-		const itemSize = GLBHelper.getItemSize(glbAccessor.type);
-		const arrayType = glbAccessor.componentType;
-		const count = glbAccessor.count;
-		const byteOffset = glbAccessor.byteOffset;
+            }
 
-		const typedArray = GLBHelper.getTypeArray(arrayType, buffer, byteOffset, count * itemSize);
+            if (pbr.roughnessFactor !== undefined) {
 
-		const normalized = glbAccessor.normalized === true;
+                material.roughness = pbr.roughnessFactor
 
-		glbAccessor.instance = new Attribute(typedArray, itemSize, normalized);
+            }
 
-		return glbAccessor.instance;
+            if (pbr.metallicRoughnessTexture !== undefined) {
 
-	}
+                const texture = await this.loadTexture(pbr.metallicRoughnessTexture.index);
+                material.metalnessMap = texture;
+                material.roughnessMap = texture;
 
-	private loadBufferView(glbBufferViewIndex: number): ArrayBuffer {
+            }
 
-		const glbBufferView = this.glbObject.bufferViews[glbBufferViewIndex];
+            if (materialDef.normalTexture !== undefined) {
 
-		if (glbBufferView.instance !== undefined) {
+                // const texture = await this.loadTexture(materialDef.normalTexture.index);
 
-			return glbBufferView.instance;
+                // material.normalMap = texture;
+                // material.normalScale = new Vector2(1, 1);
 
-		}
+                // if (materialDef.normalTexture.scale !== undefined) {
 
-		const byteLength = glbBufferView.byteLength;
-		const byteOffset = glbBufferView.byteOffset;
+                //     material.normalScale.set(materialDef.normalTexture.scale, materialDef.normalTexture.scale);
 
-		glbBufferView.instance = this.body.slice(byteOffset, byteOffset + byteLength);
+                // }
 
-		return glbBufferView.instance;
+            }
 
-	}
+            if (materialDef.occlusionTexture !== undefined) {
 
-	private async loadMaterials(glbPrimitives: GLBPrimitive[]): Promise<Material[]> {
+                // aoMap
 
-		const materials: Material[] = []
+            }
 
-		for (const glbPrimitive of glbPrimitives) {
+            if (materialDef.emissiveFactor !== undefined) {
 
-			if (glbPrimitive.material === undefined) {
+                // emissive
 
-				materials.push(new MeshMaterial());
+            }
 
-			} else {
+            if (materialDef.extensions !== undefined) {
 
-				const material = await this.loadMaterial(glbPrimitive.material);
+                // const key = 'KHR_materials_emissive_strength';
 
-				materials.push(material);
+                // if (materialDef.extensions[key] !== undefined) {
 
-			}
+                //     const emissiveStrength = materialDef.extensions[key].emissiveStrength;
 
-		}
+                //     if (emissiveStrength !== undefined) {
 
-		return materials;
+                //         material.emissiveIntensity = emissiveStrength;
 
-	}
+                //     }
 
-	private async loadMaterial(glbMaterialindex: number): Promise<Material> {
+                // }
 
-		const glbMaterial = this.glbObject.materials[glbMaterialindex];
+            }
 
-		if (glbMaterial.instance !== undefined) {
+            if (materialDef.emissiveTexture !== undefined) {
 
-			return glbMaterial.instance;
+                // emissiveMap
 
-		}
+            }
 
-		const material = new MeshMaterial();
+            // 双面渲染
+            if (materialDef.doubleSided === true) {
 
-		glbMaterial.instance = material;
+                material.backfaceCulling = false;
 
-		material.name = glbMaterial.name;
+            }
 
-		const pbr = glbMaterial.pbrMetallicRoughness;
+            // 透明模式
+            if (materialDef.alphaMode === 'BLEND') {
 
-		if (Array.isArray(pbr.baseColorFactor)) {
+                // material.transparent = true;
+                // material.depthWrite = false; todo: 需要测试
 
-			material.color.fromArray(pbr.baseColorFactor);
-			material.opacity = pbr.baseColorFactor[3];
+            } else {
 
-		}
+                // 'OPAQUE' 'MASK'
 
-		if (pbr.baseColorTexture !== undefined) {
+                // material.transparent = false;
 
-			const texture = await this.loadTexture(pbr.baseColorTexture.index);
+                // if (materialDef.alphaMode === 'MASK') {
 
-			material.map = texture;
+                // 	if (materialDef.alphaCutoff === undefined) {
 
-		}
+                // 		// material.alphaTest = 0.5;
 
-		if (pbr.metallicFactor !== undefined) {
+                // 	} else {
 
-			material.metalness = pbr.metallicFactor;
+                // 		// material.alphaTest = materialDef.alphaCutoff;
 
-		}
+                // 	}
 
-		if (pbr.roughnessFactor !== undefined) {
+                // }
 
-			material.roughness = pbr.roughnessFactor
+            }
 
-		}
+            materials.push(material);
 
-		if (pbr.metallicRoughnessTexture !== undefined) {
+        }
 
-			// const texture = await this.loadTexture(pbr.metallicRoughnessTexture.index);
+        return materials;
 
-			// material.metalnessMap = texture;
-			// material.roughnessMap = texture;
+    }
 
-		}
+    private async loadTexture(index: number,): Promise<Texture> {
 
-		if (glbMaterial.normalTexture !== undefined) {
+        const textureDef = this.objectDef.textures[index];
 
-			const texture = await this.loadTexture(glbMaterial.normalTexture.index);
+        if (textureDef.instance) {
 
-			material.normalMap = texture;
-			material.normalScale = new Vector2(1, 1);
+            return textureDef.instance;
 
-			if (glbMaterial.normalTexture.scale !== undefined) {
+        }
 
-				material.normalScale.set(glbMaterial.normalTexture.scale, glbMaterial.normalTexture.scale);
+        const imageDef = this.objectDef.images[textureDef.source];
 
-			}
+        if (!imageDef.instance) {
 
-		}
+            const buffer = this.loadBufferView(imageDef.bufferView)
+            const blob = new Blob([buffer], { type: imageDef.mimeType });
 
-		if (glbMaterial.occlusionTexture !== undefined) {
+            imageDef.instance = await createImageBitmap(blob, { colorSpaceConversion: 'none' });
 
-			// aoMap
+        }
 
-		}
+        const texture = new Texture(imageDef.instance);
+        textureDef.instance = texture;
 
-		if (glbMaterial.emissiveFactor !== undefined) {
+        const samplerDef = this.objectDef.samplers[textureDef.sampler];
+        texture.magFilter = GLBHelper.filterMapping.get(samplerDef.magFilter) || texture.magFilter;
+        texture.minFilter = GLBHelper.filterMapping.get(samplerDef.minFilter) || texture.minFilter;
+        texture.wrapS = GLBHelper.wrapMapping.get(samplerDef.wrapS) || texture.wrapS;
+        texture.wrapT = GLBHelper.wrapMapping.get(samplerDef.wrapT) || texture.wrapT;
 
-			// emissive
+        return texture;
 
-		}
+    }
 
-		if (glbMaterial.extensions !== undefined) {
+    private loadBufferView(index: number): ArrayBuffer {
 
-			const key = 'KHR_materials_emissive_strength';
+        const bufferViewDef = this.objectDef.bufferViews[index];
 
-			if (glbMaterial.extensions[key] !== undefined) {
+        const byteLength = bufferViewDef.byteLength;
+        const byteOffset = bufferViewDef.byteOffset || 0;
 
-				const emissiveStrength = glbMaterial.extensions[key].emissiveStrength;
+        if (this.bufferData) {
 
-				if (emissiveStrength !== undefined) {
+            return this.bufferData.slice(byteOffset, byteOffset + byteLength);
 
-					material.emissiveIntensity = emissiveStrength;
+        } else {
 
-				}
+            return new ArrayBuffer(byteLength);
 
-			}
+        }
 
-		}
+    }
 
-		if (glbMaterial.emissiveTexture !== undefined) {
+}
 
-			// emissiveMap
+export class GLBLoader {
 
-		}
+    public static async load(url: string, onLoad?: Function): Promise<TRSNode | undefined> {
 
-		// 双面渲染
+        return new GBL(url, onLoad).parse();
 
-		if (glbMaterial.doubleSided === true) {
-
-			material.backfaceCulling = false;
-
-		}
-
-		// 透明模式
-
-		if (glbMaterial.alphaMode === 'BLEND') {
-
-			// material.transparent = true;
-			// material.depthWrite = false; todo: 需要测试
-
-		} else {
-
-			// 'OPAQUE' 'MASK'
-
-			// material.transparent = false;
-
-			// if (glbMaterial.alphaMode === 'MASK') {
-
-			// 	if (glbMaterial.alphaCutoff === undefined) {
-
-			// 		// material.alphaTest = 0.5;
-
-			// 	} else {
-
-			// 		// material.alphaTest = glbMaterial.alphaCutoff;
-
-			// 	}
-
-			// }
-
-		}
-
-		return material;
-
-	}
-
-	private async loadTexture(glbTextureindex: number,): Promise<Texture> {
-
-		const glbTexture = this.glbObject.textures[glbTextureindex];
-
-		if (glbTexture.instance !== undefined) {
-
-			return glbTexture.instance;
-
-		}
-
-		const glbImage = this.glbObject.images[glbTexture.source];
-
-		if (glbImage.instance === undefined) {
-
-			const glbBufferView = this.glbObject.bufferViews[glbImage.bufferView];
-
-			const byteLength = glbBufferView.byteLength;
-			const byteOffset = glbBufferView.byteOffset || 0;
-
-			const buffer = this.body.slice(byteOffset, byteOffset + byteLength);
-
-			const blob = new Blob([buffer], { type: glbImage.mimeType });
-
-			glbImage.instance = await createImageBitmap(blob, { colorSpaceConversion: 'none' });
-
-		}
-
-		const texture = new Texture(glbImage.instance);
-
-		const glbSampler = this.glbObject.samplers[glbTexture.sampler];
-
-		let value: number;
-
-		value = GLBHelper.getFilter(glbSampler.magFilter);
-
-		if (value !== undefined) {
-
-			texture.magFilter = value;
-
-		}
-
-		value = GLBHelper.getFilter(glbSampler.minFilter);
-
-		if (value !== undefined) {
-
-			texture.minFilter = value;
-
-		}
-
-		value = GLBHelper.getWrap(glbSampler.wrapS);
-
-		if (value !== undefined) {
-
-			texture.wrapS = value;
-		}
-
-		value = GLBHelper.getWrap(glbSampler.wrapT);
-
-		if (value !== undefined) {
-
-			texture.wrapT = value;
-
-		}
-
-		glbTexture.instance = texture;
-
-		return glbTexture.instance;
-
-	}
+    }
 
 }

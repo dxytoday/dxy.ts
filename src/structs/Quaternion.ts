@@ -1,14 +1,75 @@
-import { Vector4 } from "./Vector4";
+import { Matrix4 } from "./Matrix4";
 
-export class Quaternion extends Vector4 {
+export class Quaternion {
 
-    public constructor(x?: number, y?: number, z?: number, w?: number) {
+    public constructor(
 
-        super(x, y, z, w);
+        public x = 0,
+        public y = 0,
+        public z = 0,
+        public w = 1,
+
+    ) { }
+
+    public setFromArray(array: number[], offset = 0): Quaternion {
+
+        this.x = array[offset];
+        this.y = array[offset + 1];
+        this.z = array[offset + 2];
+        this.w = array[offset + 3];
+
+        return this;
 
     }
 
-    public setEuler(x: number, y: number, z: number): Quaternion {
+    public setFromMatrix4(m: Matrix4): Quaternion {
+
+        const me = m.elements;
+        const trace = me[0] + me[5] + me[10];
+
+        if (trace > 0) {
+
+            const s = 0.5 / Math.sqrt(trace + 1.0);
+
+            this.w = 0.25 / s;
+            this.x = (me[6] - me[9]) * s;
+            this.y = (me[8] - me[2]) * s;
+            this.z = (me[1] - me[4]) * s;
+
+        } else if (me[0] > me[5] && me[0] > me[10]) {
+
+            const s = 2.0 * Math.sqrt(1.0 + me[0] - me[5] - me[10]);
+
+            this.w = (me[6] - me[9]) / s;
+            this.x = 0.25 * s;
+            this.y = (me[4] + me[1]) / s;
+            this.z = (me[8] + me[2]) / s;
+
+        } else if (me[5] > me[10]) {
+
+            const s = 2.0 * Math.sqrt(1.0 + me[5] - me[0] - me[10]);
+
+            this.w = (me[8] - me[2]) / s;
+            this.x = (me[4] + me[1]) / s;
+            this.y = 0.25 * s;
+            this.z = (me[9] + me[6]) / s;
+
+        } else {
+
+            const s = 2.0 * Math.sqrt(1.0 + me[10] - me[0] - me[5]);
+
+            this.w = (me[1] - me[4]) / s;
+            this.x = (me[8] + me[2]) / s;
+            this.y = (me[9] + me[6]) / s;
+            this.z = 0.25 * s;
+
+        }
+
+        return this;
+
+    }
+
+    public setFromEuler(x: number, y: number, z: number): Quaternion {
 
         /**
          * 

@@ -45,7 +45,7 @@ export class WebGLState {
 
     public setClearColor(r: number, g: number, b: number, a = 1): void {
 
-        if (!this.clearColor.equals(r, g, b, a)) {
+        if (!this.clearColor.equalsComponent(r, g, b, a)) {
 
             this.clearColor.set(r, g, b, a);
             this.gl.clearColor(r, g, b, a);
@@ -56,7 +56,7 @@ export class WebGLState {
 
     public setViewport(x: number, y: number, width: number, height: number): void {
 
-        if (!this.viewport.equals(x, y, width, height)) {
+        if (!this.viewport.equalsComponent(x, y, width, height)) {
 
             this.viewport.set(x, y, width, height);
             this.gl.viewport(x, y, width, height);

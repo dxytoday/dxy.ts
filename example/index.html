@@ -37,8 +37,15 @@
 		const canvas = document.getElementById("canvas");
 		const dxy = new Dxy(canvas);
 
-		dxy.setBackground('./resources/textures/cubeMap/Bridge2/negz.jpg', 'image');
-		dxy.loadGLB('./resources/models/cube.glb');
+		dxy.setBackground({
+			type: 'image',
+			url: './resources/textures/cube/dark-s_nz.jpg',
+		});
+
+		dxy.loadModel({
+			type: 'glb',
+			url: './resources/models/cube.glb'
+		});
 
 		dxy.camera.position.set(0, 0, 10);
 

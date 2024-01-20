@@ -1,7 +1,14 @@
+import { Matrix3 } from "../structs/Matrix3";
 import { Matrix4 } from "../structs/Matrix4";
+import { Spherical } from "../structs/Spherical";
 import { Vector2 } from "../structs/Vector2";
 import { Vector3 } from "../structs/Vector3";
 import { TRSNode } from "./TRSNode";
+
+const _vevtor3 = new Vector3();
+const _matrix3 = new Matrix3();
+const _matrix4 = new Matrix4();
+const _spherical = new Spherical();
 
 class Controls {
 
@@ -56,7 +63,39 @@ class Controls {
 
     public update(): void {
 
+        if (
 
+            this.rotateDelta.equalsScalar(0) &&
+            this.panOffset.equalsScalar(0) &&
+            this.zoom === 1
+
+        ) {
+
+            return;
+
+        }
+
+        _vevtor3.subVectors(this.camera.position, this.viewPoint);
+        _spherical.setFromVector3(_vevtor3);
+
+        // 因为是控制相机旋转，为了让物体旋转方向和鼠标移动方向一致所以用减号
+        _spherical.theta -= this.rotateDelta.x;
+        _spherical.phi -= this.rotateDelta.y;
+        _spherical.makeSafe();
+
+        _spherical.radius *= this.zoom;
+        _spherical.toVector3(_vevtor3);
+
+        this.camera.position.copy(this.viewPoint);
+        this.camera.position.add(_vevtor3);
+
+        this.viewPoint.sub(this.panOffset);
+
+        this.camera.lookAt(this.viewPoint);
+
+        this.rotateDelta.setScalar(0);
+        this.panOffset.setScalar(0);
+        this.zoom = 1;
 
     }
 
@@ -70,12 +109,12 @@ class Controls {
 
         this.canvas.setPointerCapture(event.pointerId);
 
-        if (event.button === 0) { // left
+        if (event.button === 0) {
 
             this.state = 'rotate';
             this.rotateStart.set(event.clientX, event.clientY);
 
-        } else if (event.button === 2) { // right
+        } else if (event.button === 2) {
 
             this.state = 'pan';
             this.panStart.set(event.clientX, event.clientY);
@@ -89,36 +128,44 @@ class Controls {
         if (this.state === 'rotate') {
 
             this.rotateEnd.set(event.clientX, event.clientY);
+            this.rotateStart.subVectors(this.rotateEnd, this.rotateStart);
 
-            this.rotateStart.sub(this.rotateEnd, this.rotateStart);
-            this.rotateStart.multiply(2 * Math.PI / this.canvas.height);
-            this.rotateDelta.sub(this.rotateStart);
+            // 以 [画布高度 = 2PI] 为基准，计算 xy 移动的等比例弧度
+            this.rotateStart.multiplyScalar(2 * Math.PI / this.canvas.height);
 
-            this.rotateStart.set(this.rotateEnd);
+            // 累计计算结果
+            this.rotateDelta.add(this.rotateStart);
 
-        } else if (this.state === 'pan') {
+            this.rotateStart.copy(this.rotateEnd);
+
+            return;
+
+        }
+
+        if (this.state === 'pan') {
 
             this.panEnd.set(event.clientX, event.clientY);
+            this.panStart.subVectors(this.panEnd, this.panStart);
 
-            this.panStart.sub(this.panEnd, this.panStart);
+            // 计算以 fov 为夹角的中心到顶部的距离
+            const halfFov = this.camera.fov / 360 * Math.PI;
+            let edge = this.camera.position.distanceTo(this.viewPoint);
+            edge *= Math.tan(halfFov);
 
-            const fov = this.camera.fov / 180 * Math.PI;
-            // let dis = this.camera.position.distanceTo(this.viewPoint);
-            // dis *= Math.tan(fov * 0.5);
+            // 以 [画布高度 = fov 垂直距离] 为基准，计算 xy 移动的等比例距离
+            this.panStart.multiplyScalar(2 * edge / this.canvas.height);
 
-            // _m4.copy(this.camera.viewMatrix).invert();
+            // 从相机空间转换到世界空间，-y 是因为像素 ↓ 为正 webgl ↑ 为正
+            _vevtor3.set(this.panStart.x, -this.panStart.y, 0);
+            _matrix3.setFromMatrix4(this.camera.worldMatrix);
+            _vevtor3.applyMatrix3(_matrix3);
 
-            // const xOffset = this.panStart.x / this.element.height * dis;
-            // _v3.setFromMatrixColumn(_m4, 0);
-            // _v3.multiplyScalar(-xOffset);
-            // this.panOffset.add(_v3);
+            // 累计计算结果
+            this.panOffset.add(_vevtor3);
 
-            // const yOffset = this.panStart.y / this.element.height * dis;
-            // _v3.setFromMatrixColumn(_m4, 1);
-            // _v3.multiplyScalar(yOffset);
-            // this.panOffset.add(_v3);
+            this.panStart.copy(this.panEnd);
 
-            // this.panStart.copy(this.panEnd);
+            return;
 
         }
 
@@ -137,13 +184,13 @@ class Controls {
 
         if (event.deltaY < 0) {
 
-            this.zoom *= 0.95;
+            this.zoom *= 0.9;
 
         }
 
         if (event.deltaY > 0) {
 
-            this.zoom /= 0.95;
+            this.zoom /= 0.9;
 
         }
 
@@ -177,7 +224,7 @@ export class Camera extends TRSNode {
         this.controls.update();
 
         super.updateMatrix(updateParents, updateChildren);
-        this.viewMatrix.set(this.worldMatrix).invert();
+        this.viewMatrix.copy(this.worldMatrix).invert();
 
     }
 
@@ -199,9 +246,10 @@ export class Camera extends TRSNode {
 
     }
 
-    public dispose(): void {
+    public lookAt(target: Vector3): void {
 
-        this.controls.dispose();
+        _matrix4.makeLookAt(this.position, target);
+        this.rotation.setFromMatrix4(_matrix4);
 
     }
 

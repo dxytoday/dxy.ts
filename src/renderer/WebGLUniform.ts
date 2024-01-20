@@ -1,3 +1,4 @@
+import { Color } from "../structs/Color";
 import { Matrix3 } from "../structs/Matrix3";
 import { Matrix4 } from "../structs/Matrix4";
 import { Vector2 } from "../structs/Vector2";
@@ -460,7 +461,7 @@ class FVector2Uniform extends WebGLUniform<Vector2> {
 
         if (value instanceof Vector2 && !this.current.equals(value)) {
 
-            this.current.set(value);
+            this.current.copy(value);
             this.safeSet();
 
         }
@@ -506,11 +507,18 @@ class FVector3Uniform extends WebGLUniform<Vector3> {
 
     }
 
-    public override set(value: Vector3): void {
+    public override set(value: Vector3 | Color): void {
 
         if (value instanceof Vector3 && !this.current.equals(value)) {
 
-            this.current.set(value);
+            this.current.copy(value);
+            this.safeSet();
+
+        }
+
+        if (value instanceof Color && !value.equalsVector3(this.current)) {
+
+            value.toVector3(this.current);
             this.safeSet();
 
         }
@@ -560,7 +568,7 @@ class FVector4Uniform extends WebGLUniform<Vector4> {
 
         if (value instanceof Vector4 && !this.current.equals(value)) {
 
-            this.current.set(value);
+            this.current.copy(value);
             this.safeSet();
 
         }
@@ -610,7 +618,7 @@ class Matrix3Uniform extends WebGLUniform<Matrix3> {
 
         if (value instanceof Matrix3 && !this.current.equals(value)) {
 
-            this.current.set(value);
+            this.current.copy(value);
             this.gl.uniformMatrix3fv(this.location, false, this.current.elements);
 
         }
@@ -638,7 +646,7 @@ class Matrix4Uniform extends WebGLUniform<Matrix4> {
 
         if (value instanceof Matrix4 && !this.current.equals(value)) {
 
-            this.current.set(value);
+            this.current.copy(value);
             this.gl.uniformMatrix4fv(this.location, false, this.current.elements);
 
         }

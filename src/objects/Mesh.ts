@@ -23,10 +23,8 @@ export class Mesh extends TRSNode {
 
     public updateModelViewMatrix(viewMatrix: Matrix4): void {
 
-        this.modelViewMatrix.set(this.worldMatrix);
-        this.modelViewMatrix.multiply(viewMatrix);
-
-        this.normalMatrix.setNormalMatrix(this.modelViewMatrix);
+        this.modelViewMatrix.multiplyMatrices(this.worldMatrix, viewMatrix);
+        this.normalMatrix.makeNormalMatrix(this.modelViewMatrix);
 
     }
 

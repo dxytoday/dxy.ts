@@ -1,6 +1,10 @@
-import { Matrix3 } from "./Matrix3";
 import { Quaternion } from "./Quaternion";
 import { Vector3 } from "./Vector3";
+
+const _up = new Vector3(0, 1, 0);
+const _z = new Vector3();
+const _x = new Vector3();
+const _y = new Vector3();
 
 export class Matrix4 {
 
@@ -17,43 +21,43 @@ export class Matrix4 {
 
     ) { }
 
-
-    public set(matrix4: Matrix4): Matrix4;
     public set(
+
         n11: number, n12: number, n13: number, n14: number,
         n21: number, n22: number, n23: number, n24: number,
         n31: number, n32: number, n33: number, n34: number,
         n41: number, n42: number, n43: number, n44: number,
-    ): Matrix4;
-    public set(): Matrix4 {
 
-        const arg0 = arguments[0];
+    ): Matrix4 {
 
-        if (arg0 instanceof Matrix4) {
+        this.elements[0] = n11;
+        this.elements[1] = n12;
+        this.elements[2] = n13;
+        this.elements[3] = n14;
 
-            this.elements.length = 0;
-            this.elements.push(...arg0.elements);
+        this.elements[4] = n21;
+        this.elements[5] = n22;
+        this.elements[6] = n23;
+        this.elements[7] = n24;
 
-        } else if (arguments.length >= 16) {
+        this.elements[8] = n31;
+        this.elements[9] = n32;
+        this.elements[10] = n33;
+        this.elements[11] = n34;
 
-            this.elements[0] = arg0;
-            this.elements[1] = arguments[1];
-            this.elements[2] = arguments[2];
-            this.elements[3] = arguments[3];
-            this.elements[4] = arguments[4];
-            this.elements[5] = arguments[5];
-            this.elements[6] = arguments[6];
-            this.elements[7] = arguments[7];
-            this.elements[8] = arguments[8];
-            this.elements[9] = arguments[9];
-            this.elements[10] = arguments[10];
-            this.elements[11] = arguments[11];
-            this.elements[12] = arguments[12];
-            this.elements[13] = arguments[13];
-            this.elements[14] = arguments[14];
-            this.elements[15] = arguments[15];
+        this.elements[12] = n41;
+        this.elements[13] = n42;
+        this.elements[14] = n43;
+        this.elements[15] = n44;
 
-        }
+        return this;
+
+    }
+
+    public copy(m: Matrix4): Matrix4 {
+
+        this.elements.length = 0;
+        this.elements.push(...m.elements);
 
         return this;
 
@@ -61,30 +65,36 @@ export class Matrix4 {
 
     public multiply(right: Matrix4): Matrix4 {
 
-        /** this = this * right , this 在左 , right 在右 */
+        return this.multiplyMatrices(this, right);
 
-        const te = this.elements.slice();
+    }
+
+    public multiplyMatrices(left: Matrix4, right: Matrix4): Matrix4 {
+
+        /** this = left * right , left 在左 , right 在右 */
+
+        const le = left.elements.slice();
         const re = right.elements.slice();
 
-        this.elements[0] = te[0] * re[0] + te[1] * re[4] + te[2] * re[8] + te[3] * re[12];
-        this.elements[1] = te[0] * re[1] + te[1] * re[5] + te[2] * re[9] + te[3] * re[13];
-        this.elements[2] = te[0] * re[2] + te[1] * re[6] + te[2] * re[10] + te[3] * re[14];
-        this.elements[3] = te[0] * re[3] + te[1] * re[7] + te[2] * re[11] + te[3] * re[15];
+        this.elements[0] = le[0] * re[0] + le[1] * re[4] + le[2] * re[8] + le[3] * re[12];
+        this.elements[1] = le[0] * re[1] + le[1] * re[5] + le[2] * re[9] + le[3] * re[13];
+        this.elements[2] = le[0] * re[2] + le[1] * re[6] + le[2] * re[10] + le[3] * re[14];
+        this.elements[3] = le[0] * re[3] + le[1] * re[7] + le[2] * re[11] + le[3] * re[15];
 
-        this.elements[4] = te[4] * re[0] + te[5] * re[4] + te[6] * re[8] + te[7] * re[12];
-        this.elements[5] = te[4] * re[1] + te[5] * re[5] + te[6] * re[9] + te[7] * re[13];
-        this.elements[6] = te[4] * re[2] + te[5] * re[6] + te[6] * re[10] + te[7] * re[14];
-        this.elements[7] = te[4] * re[3] + te[5] * re[7] + te[6] * re[11] + te[7] * re[15];
+        this.elements[4] = le[4] * re[0] + le[5] * re[4] + le[6] * re[8] + le[7] * re[12];
+        this.elements[5] = le[4] * re[1] + le[5] * re[5] + le[6] * re[9] + le[7] * re[13];
+        this.elements[6] = le[4] * re[2] + le[5] * re[6] + le[6] * re[10] + le[7] * re[14];
+        this.elements[7] = le[4] * re[3] + le[5] * re[7] + le[6] * re[11] + le[7] * re[15];
 
-        this.elements[8] = te[8] * re[0] + te[9] * re[4] + te[10] * re[8] + te[11] * re[12];
-        this.elements[9] = te[8] * re[1] + te[9] * re[5] + te[10] * re[9] + te[11] * re[13];
-        this.elements[10] = te[8] * re[2] + te[9] * re[6] + te[10] * re[10] + te[11] * re[14];
-        this.elements[11] = te[8] * re[3] + te[9] * re[7] + te[10] * re[11] + te[11] * re[15];
+        this.elements[8] = le[8] * re[0] + le[9] * re[4] + le[10] * re[8] + le[11] * re[12];
+        this.elements[9] = le[8] * re[1] + le[9] * re[5] + le[10] * re[9] + le[11] * re[13];
+        this.elements[10] = le[8] * re[2] + le[9] * re[6] + le[10] * re[10] + le[11] * re[14];
+        this.elements[11] = le[8] * re[3] + le[9] * re[7] + le[10] * re[11] + le[11] * re[15];
 
-        this.elements[12] = te[12] * re[0] + te[13] * re[4] + te[14] * re[8] + te[15] * re[12];
-        this.elements[13] = te[12] * re[1] + te[13] * re[5] + te[14] * re[9] + te[15] * re[13];
-        this.elements[14] = te[12] * re[2] + te[13] * re[6] + te[14] * re[10] + te[15] * re[14];
-        this.elements[15] = te[12] * re[3] + te[13] * re[7] + te[14] * re[11] + te[15] * re[15];
+        this.elements[12] = le[12] * re[0] + le[13] * re[4] + le[14] * re[8] + le[15] * re[12];
+        this.elements[13] = le[12] * re[1] + le[13] * re[5] + le[14] * re[9] + le[15] * re[13];
+        this.elements[14] = le[12] * re[2] + le[13] * re[6] + le[14] * re[10] + le[15] * re[14];
+        this.elements[15] = le[12] * re[3] + le[13] * re[7] + le[14] * re[11] + le[15] * re[15];
 
         return this;
 
@@ -275,30 +285,7 @@ export class Matrix4 {
 
     }
 
-    public getLinearMatrix(target = new Matrix3()): Matrix3 {
-
-        const me = this.elements;
-
-        return target.set(
-
-            me[0], me[1], me[2],
-            me[4], me[5], me[6],
-            me[8], me[9], me[10],
-
-        );
-
-    }
-
-    public makePerspective(
-
-        left: number,
-        right: number,
-        top: number,
-        bottom: number,
-        near: number,
-        far: number,
-
-    ) {
+    public makePerspective(left: number, right: number, top: number, bottom: number, near: number, far: number): Matrix4 {
 
         /**
          * 
@@ -326,6 +313,49 @@ export class Matrix4 {
         te[4] = 0, te[5] = y, te[6] = 0, te[7] = 0;
         te[8] = a, te[9] = b, te[10] = c, te[11] = -1;
         te[12] = 0, te[13] = 0, te[14] = d, te[15] = 0;
+
+        return this;
+
+    }
+
+    public makeLookAt(eye: Vector3, target: Vector3): Matrix4 {
+
+        _z.subVectors(eye, target);
+
+        if (!_z.length()) {
+
+            _z.z = 1;
+
+        }
+
+        _z.normalize();
+        _x.crossVectors(_up, _z);
+
+        if (!_x.lengthSq()) {
+
+            _z.z += 0.0001;
+
+            _z.normalize();
+            _x.crossVectors(_up, _z);
+
+        }
+
+        _x.normalize();
+        _y.crossVectors(_z, _x);
+
+        this.elements[0] = _x.x;
+        this.elements[1] = _x.y;
+        this.elements[2] = _x.z;
+
+        this.elements[4] = _y.x;
+        this.elements[5] = _y.y;
+        this.elements[6] = _y.z;
+
+        this.elements[8] = _z.x;
+        this.elements[9] = _z.y;
+        this.elements[10] = _z.z;
+
+        return this;
 
     }
 

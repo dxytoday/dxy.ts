@@ -1,113 +1,171 @@
 import { Vector3 } from "./Vector3";
 
-export class Color extends Vector3 {
+class ColorHelper {
 
-    public constructor(r = 1, g = 1, b = 1) {
+    public static fromStyle(style: string): number[] {
 
-        super(r, g, b);
+        let execArray: RegExpExecArray | null;
 
-    }
+        if (execArray = /^(\w+)\(([^\)]*)\)/.exec(style)) {
 
-    public get r(): number {
+            return ColorHelper.fromRGB(execArray);
 
-        return this.x;
-    }
+        }
 
-    public set r(r: number) {
+        if (execArray = /^\#([A-Fa-f\d]+)$/.exec(style)) {
 
-        this.x = r;
+            return ColorHelper.fromHex(execArray);
 
-    }
+        }
 
-    public get g(): number {
-
-        return this.y;
-    }
-
-    public set g(g: number) {
-
-        this.y = g;
+        return [0, 0, 0];
 
     }
 
-    public get b(): number {
+    public static fromRGB(array: RegExpExecArray): number[] {
 
-        return this.z;
-    }
+        const name = array[1];
+        const result = [0, 0, 0];
 
-    public set b(b: number) {
+        if (name === 'rgb' || name === 'rgba') {
 
-        this.z = b;
+            const components = array[2];
+            let color: RegExpExecArray | null;
 
-    }
+            if (color = /^\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*(\d*\.?\d+)\s*)?$/.exec(components)) {
 
-    public setStyle(style: string): Color {
+                // rgb(255, 0, 0) rgba(255, 0, 0, 0.5)
 
-        let m;
-
-        if (m = /^(\w+)\(([^\)]*)\)/.exec(style)) {
-
-            // rgb / hsl
-
-            let color;
-            const name = m[1];
-            const components = m[2];
-
-            if (name === 'rgb' || name === 'rgba') {
-
-                if (color = /^\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*(\d*\.?\d+)\s*)?$/.exec(components)) {
-
-                    // rgb(255, 0, 0) rgba(255, 0, 0, 0.5)
-
-                    this.r = Math.min(255, parseInt(color[1], 10)) / 255;
-                    this.g = Math.min(255, parseInt(color[2], 10)) / 255;
-                    this.b = Math.min(255, parseInt(color[3], 10)) / 255;
-
-                }
-
-                if (color = /^\s*(\d+)\%\s*,\s*(\d+)\%\s*,\s*(\d+)\%\s*(?:,\s*(\d*\.?\d+)\s*)?$/.exec(components)) {
-
-                    // rgb(100%, 0%, 0%) rgba(100%, 0%, 0%, 0.5)
-
-                    this.r = Math.min(100, parseInt(color[1], 10)) / 100;
-                    this.g = Math.min(100, parseInt(color[2], 10)) / 100;
-                    this.b = Math.min(100, parseInt(color[3], 10)) / 100;
-
-                }
-
-            } else if (name === 'hsl' || name === 'hsla') {
+                result[0] = Math.min(255, parseInt(color[1], 10)) / 255;
+                result[1] = Math.min(255, parseInt(color[2], 10)) / 255;
+                result[2] = Math.min(255, parseInt(color[3], 10)) / 255;
 
             }
 
-        } else if (m = /^\#([A-Fa-f\d]+)$/.exec(style)) {
+            if (color = /^\s*(\d+)\%\s*,\s*(\d+)\%\s*,\s*(\d+)\%\s*(?:,\s*(\d*\.?\d+)\s*)?$/.exec(components)) {
 
-            // hex color
+                // rgb(100%, 0%, 0%) rgba(100%, 0%, 0%, 0.5)
 
-            const hex = m[1];
-            const size = hex.length;
-
-            if (size === 3) {
-
-                // #ff0
-                this.r = parseInt(hex.charAt(0), 16) / 15;
-                this.g = parseInt(hex.charAt(1), 16) / 15;
-                this.b = parseInt(hex.charAt(2), 16) / 15;
-
-            } else if (size === 6) {
-
-                // #ff0000
-
-                const h = parseInt(hex, 16);
-
-                this.r = (h >> 16 & 255) / 255;
-                this.g = (h >> 8 & 255) / 255;
-                this.b = (h & 255) / 255;
+                result[0] = Math.min(100, parseInt(color[1], 10)) / 100;
+                result[1] = Math.min(100, parseInt(color[2], 10)) / 100;
+                result[2] = Math.min(100, parseInt(color[3], 10)) / 100;
 
             }
 
         }
 
+        return result;
+
+    }
+
+    public static fromHex(array: RegExpExecArray): number[] {
+
+        const hex = array[1];
+        const size = hex.length;
+
+        const result = [0, 0, 0];
+
+        if (size === 3) {
+
+            // #ff0
+
+            result[0] = parseInt(hex.charAt(0), 16) / 15;
+            result[1] = parseInt(hex.charAt(1), 16) / 15;
+            result[2] = parseInt(hex.charAt(2), 16) / 15;
+
+        } else if (size === 6) {
+
+            // #ff0000
+
+            const h = parseInt(hex, 16);
+
+            result[0] = (h >> 16 & 255) / 255;
+            result[1] = (h >> 8 & 255) / 255;
+            result[2] = (h & 255) / 255;
+
+        }
+
+        return result;
+
+    }
+
+}
+
+export class Color {
+
+    public constructor(
+
+        public r = 1,
+        public g = 1,
+        public b = 1,
+
+    ) { }
+
+    public set(r: number, g: number, b: number): Color {
+
+        this.r = r;
+        this.g = g;
+        this.b = b;
+
         return this;
+
+    }
+
+    public setStyle(style: string): Color {
+
+        const [r, g, b] = ColorHelper.fromStyle(style);
+
+        this.r = r;
+        this.g = g;
+        this.b = b;
+
+        return this;
+
+    }
+
+    public copy(color: Color): Color {
+
+        this.r = color.r;
+        this.g = color.g;
+        this.b = color.b;
+
+        return this;
+
+    }
+
+    public setFromArray(array: number[], offset = 0): Color {
+
+        this.r = array[offset];
+        this.g = array[offset + 1];
+        this.b = array[offset + 2];
+
+        return this;
+
+    }
+
+    public multiplyScalar(scalar: number): Color {
+
+        this.r *= scalar;
+        this.g *= scalar;
+        this.b *= scalar;
+
+        return this;
+
+    }
+
+    public toVector3(target: Vector3): Vector3 {
+
+        target.x = this.r;
+        target.y = this.g;
+        target.z = this.b;
+
+        return target;
+
+    }
+
+    public equalsVector3(v: Vector3): boolean {
+
+        return this.r === v.x && this.g === v.y && this.b === v.z;
 
     }
 

@@ -424,19 +424,19 @@ class GBL {
 
         if (nodeDef.translation !== undefined) {
 
-            node.position.set(nodeDef.translation);
+            node.position.setFromArray(nodeDef.translation as number[]);
 
         }
 
         if (nodeDef.rotation !== undefined) {
 
-            node.rotation.set(nodeDef.rotation);
+            node.rotation.setFromArray(nodeDef.rotation as number[]);
 
         }
 
         if (nodeDef.scale !== undefined) {
 
-            node.scale.set(nodeDef.scale);
+            node.scale.setFromArray(nodeDef.scale as number[]);
 
         }
 
@@ -602,7 +602,7 @@ class GBL {
 
             if (Array.isArray(pbr.baseColorFactor)) {
 
-                material.color.set(pbr.baseColorFactor);
+                material.color.setFromArray(pbr.baseColorFactor as number[]);
                 material.opacity = pbr.baseColorFactor[3];
 
             }

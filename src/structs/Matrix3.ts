@@ -14,35 +14,52 @@ export class Matrix3 {
 
     ) { }
 
-
-    public set(matrix3: Matrix3): Matrix3;
     public set(
+
         n11: number, n12: number, n13: number,
         n21: number, n22: number, n23: number,
         n31: number, n32: number, n33: number,
-    ): Matrix3;
-    public set(): Matrix3 {
 
-        const arg0 = arguments[0];
+    ): Matrix3 {
 
-        if (arg0 instanceof Matrix3) {
+        this.elements[0] = n11;
+        this.elements[1] = n12;
+        this.elements[2] = n13;
 
-            this.elements.length = 0;
-            this.elements.push(...arg0.elements);
+        this.elements[3] = n21;
+        this.elements[4] = n22;
+        this.elements[5] = n23;
 
-        } else if (arguments.length >= 9) {
+        this.elements[6] = n31;
+        this.elements[7] = n32;
+        this.elements[8] = n33;
 
-            this.elements[0] = arg0;
-            this.elements[1] = arguments[1];
-            this.elements[2] = arguments[2];
-            this.elements[3] = arguments[3];
-            this.elements[4] = arguments[4];
-            this.elements[5] = arguments[5];
-            this.elements[6] = arguments[6];
-            this.elements[7] = arguments[7];
-            this.elements[8] = arguments[8];
+        return this;
 
-        }
+    }
+
+    public copy(m: Matrix3): Matrix3 {
+
+        this.elements.length = 0;
+        this.elements.push(...m.elements);
+
+        return this;
+
+    }
+
+    public setFromMatrix4(m: Matrix4): Matrix3 {
+
+        this.elements[0] = m.elements[0];
+        this.elements[1] = m.elements[1];
+        this.elements[2] = m.elements[2];
+
+        this.elements[3] = m.elements[4];
+        this.elements[4] = m.elements[5];
+        this.elements[5] = m.elements[6];
+
+        this.elements[6] = m.elements[8];
+        this.elements[7] = m.elements[9];
+        this.elements[8] = m.elements[10];
 
         return this;
 
@@ -108,28 +125,20 @@ export class Matrix3 {
          * 
          */
 
-        let tmp: number;
-        const m = this.elements;
+        this.set(
 
-        tmp = m[1];
-        m[1] = m[3];
-        m[3] = tmp;
+            this.elements[0], this.elements[3], this.elements[6],
+            this.elements[1], this.elements[4], this.elements[7],
+            this.elements[2], this.elements[5], this.elements[8],
 
-        tmp = m[2];
-        m[2] = m[6];
-        m[6] = tmp;
-
-        tmp = m[5];
-        m[5] = m[7];
-        m[7] = tmp;
+        );
 
         return this;
     }
 
-    public setNormalMatrix(matrix4: Matrix4): Matrix3 {
+    public makeNormalMatrix(matrix4: Matrix4): Matrix3 {
 
-        matrix4.getLinearMatrix(this);
-        return this.invert().transpose();
+        return this.setFromMatrix4(matrix4).invert().transpose();
 
     }
 

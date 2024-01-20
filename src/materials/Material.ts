@@ -7,8 +7,9 @@ import { Vector3 } from "../structs/Vector3";
 import { Mesh } from "../objects/Mesh";
 import { Camera } from "../objects/Camera";
 import { Scene } from "../objects/Scene";
+import { Color } from "../structs/Color";
 
-export type UniformValue = undefined | number | boolean | Vector2 | Vector3 | Matrix3 | Matrix4 | Texture;
+export type UniformValue = undefined | number | boolean | Vector2 | Vector3 | Color | Matrix3 | Matrix4 | Texture;
 
 export type Uniform = {
 

@@ -1,7 +1,10 @@
 import { Color } from "../structs/Color";
+import { Matrix3 } from "../structs/Matrix3";
 import { Vector3 } from "../structs/Vector3";
 import { Camera } from "./Camera";
 import { TRSNode } from "./TRSNode";
+
+const _matrix3 = new Matrix3();
 
 export class Light extends TRSNode {
 
@@ -22,14 +25,14 @@ export class Light extends TRSNode {
 
     public update(camera: Camera): void {
 
-        this.color.set(this.lightColor);
-        this.color.multiply(this.lightIntensity);
+        this.color.copy(this.lightColor);
+        this.color.multiplyScalar(this.lightIntensity);
 
-        this.direction.set(this.position);
+        this.direction.copy(this.position);
         this.direction.sub(this.target);
 
-        const matrix = camera.viewMatrix.getLinearMatrix();
-        this.direction.multiply(matrix);
+        _matrix3.setFromMatrix4(camera.viewMatrix)
+        this.direction.applyMatrix3(_matrix3);
 
     }
 

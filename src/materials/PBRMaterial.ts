@@ -87,16 +87,16 @@ export class PBRMaterial extends Material {
         uniform.value = !!this.metalnessMap;
 
         uniform = this.getUniform('color');
-        uniform.value.set(this.color);
+        uniform.value.copy(this.color);
 
         uniform = this.getUniform('modelViewMatrix');
-        uniform.value.set(mesh.modelViewMatrix);
+        uniform.value.copy(mesh.modelViewMatrix);
 
         uniform = this.getUniform('normalMatrix');
-        uniform.value.set(mesh.normalMatrix);
+        uniform.value.copy(mesh.normalMatrix);
 
         uniform = this.getUniform('projectionMatrix');
-        uniform.value.set(camera.projectionMatrix);
+        uniform.value.copy(camera.projectionMatrix);
 
     }
 

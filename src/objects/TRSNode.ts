@@ -28,7 +28,7 @@ export class TRSNode extends EventObject {
         }
 
         this.localMatrix.compose(this.position, this.rotation, this.scale);
-        this.worldMatrix.set(this.localMatrix);
+        this.worldMatrix.copy(this.localMatrix);
 
         if (this.parent) {
 

@@ -84,34 +84,65 @@ export default class Dxy {
 
 	}
 
-	public loadGLB(url: string, onLoad: Function): void {
+	public loadModel(parameters: any = {}): void {
 
-		GLBLoader.load(url, (object: TRSNode) => {
+		const type: string = parameters.type || 'glb';
+		const url: string = parameters.url;
+		const onLoad: Function = parameters.onLoad;
 
-			this.scene.add(object);
+		if (!url) {
 
-			onLoad && onLoad(true);
+			onLoad && onLoad(false);
+			return;
 
-		});
+		}
+
+		if (type === 'glb') {
+
+			GLBLoader.load(url, (object: TRSNode) => {
+
+				this.scene.add(object);
+				onLoad && onLoad(true);
+
+			});
+
+			return;
+
+		}
+
+		if (type === 'fbx') {
+
+		}
 
 	}
 
-	public setBackground(value: string, type = ''): void {
+	public setBackground(parameters: any = {}): void {
 
-		switch (type) {
+		const type: string = parameters.type;
 
-			case '':
+		if (type === 'color') {
 
-				this.scene.setBackgroundColor(value);
-				break;
+			this.scene.setBackgroundColor(parameters.color);
 
-			case 'image':
+			return;
 
-				ImageLoader.load(value, (image: HTMLImageElement) => this.scene.setBackgroundImage(image));
-				break;
+		}
 
-			case 'skybox':
-				break;
+		if (type === 'image') {
+
+			ImageLoader.load(parameters.url, (image: HTMLImageElement) => {
+
+				this.scene.setBackgroundImage(image);
+
+			});
+
+			return;
+
+		}
+
+		if (type === 'skybox') {
+
+
 
 		}
 

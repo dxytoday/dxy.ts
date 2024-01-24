@@ -31,7 +31,7 @@ class GeometryHelper {
 
 export class Geometry extends EventObject {
 
-    public readonly attributes = new Map<string, Attribute>();
+    public readonly attributes: { [key: string]: Attribute; } = {};
     public readonly groups: RenderGroup[] = [];
 
     public indices: Attribute | undefined;
@@ -58,21 +58,20 @@ export class Geometry extends EventObject {
 
     public setAttribute(name: string, attribute: Attribute): Geometry {
 
-        this.attributes.set(name, attribute);
-
+        this.attributes[name] = attribute;
         return this;
 
     }
 
     public getAttribute(name: string): Attribute | undefined {
 
-        return this.attributes.get(name);
+        return this.attributes[name];
 
     }
 
     public hasAttribute(name: string): boolean {
 
-        return this.attributes.has(name);
+        return name in this.attributes;
 
     }
 
@@ -94,6 +93,10 @@ export class Geometry extends EventObject {
 
     }
 
-    public dispose(): void { }
+    public dispose(): void {
+
+        this.emit('dispose');
+
+    }
 
 }

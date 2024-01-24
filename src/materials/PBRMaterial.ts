@@ -1,7 +1,7 @@
 import { Color } from "../structs/Color";
-import { Material } from "./Material";
-import vertexShader from './shaders/pbr.vert.glsl';
-import fragmentShader from './shaders/pbr.frag.glsl';
+import { IUniform, Material } from "./Material";
+import vertexShader from './shaders/PBR.vert.glsl';
+import fragmentShader from './shaders/PBR.frag.glsl';
 import { Texture } from "../modules/Texture";
 import { Mesh } from "../objects/Mesh";
 import { Camera } from "../objects/Camera";
@@ -9,7 +9,31 @@ import { Matrix4 } from "../structs/Matrix4";
 import { Matrix3 } from "../structs/Matrix3";
 import { Scene } from "../objects/Scene";
 
+type PBRUniforms = {
+
+    opacity: IUniform<number>;
+    color: IUniform<Color>;
+
+    map: IUniform<Texture | undefined>;
+    useMap: IUniform<boolean>;
+
+    roughness: IUniform<number>;
+    roughnessMap: IUniform<Texture | undefined>;
+    useRoughnessMap: IUniform<boolean>;
+
+    metalness: IUniform<number>;
+    metalnessMap: IUniform<Texture | undefined>;
+    useMetalnessMap: IUniform<boolean>;
+
+    modelViewMatrix: IUniform<Matrix4>;
+    normalMatrix: IUniform<Matrix3>;
+    projectionMatrix: IUniform<Matrix4>;
+
+}
+
 export class PBRMaterial extends Material {
+
+    declare public uniforms: PBRUniforms;
 
     public opacity = 1;
     public color = new Color(1, 1, 1);
@@ -35,9 +59,9 @@ export class PBRMaterial extends Material {
 
     private initUniforms(): void {
 
+        this.setUniform('color', new Color());
         this.setUniform('opacity', 1);
 
-        this.setUniform('color', new Color());
         this.setUniform('map', undefined);
         this.setUniform('useMap', false);
 
@@ -50,53 +74,36 @@ export class PBRMaterial extends Material {
         this.setUniform('useMetalnessMap', false);
 
         this.setUniform('modelViewMatrix', new Matrix4());
-        this.setUniform('projectionMatrix', new Matrix4());
         this.setUniform('normalMatrix', new Matrix3());
+        this.setUniform('projectionMatrix', new Matrix4());
 
     }
 
     public override onBeforRender(scene: Scene, mesh: Mesh, camera: Camera): void {
 
-        let uniform: any;
+        this.uniforms.opacity.value = this.opacity;
+        this.uniforms.color.value.copy(this.color);
 
-        uniform = this.getUniform('opacity');
-        uniform.value = this.opacity;
+        this.uniforms.map.value = this.map;
+        this.uniforms.useMap.value = !!this.map;
 
-        uniform = this.getUniform('map');
-        uniform.value = this.map;
+        this.uniforms.roughness.value = this.roughness;
+        this.uniforms.roughnessMap.value = this.roughnessMap;
+        this.uniforms.useRoughnessMap.value = !!this.roughnessMap;
 
-        uniform = this.getUniform('useMap');
-        uniform.value = !!this.map;
+        this.uniforms.metalness.value = this.metalness;
+        this.uniforms.metalnessMap.value = this.metalnessMap;
+        this.uniforms.useMetalnessMap.value = !!this.metalnessMap;
 
-        uniform = this.getUniform('roughness');
-        uniform.value = this.roughness;
+        this.uniforms.modelViewMatrix.value.copy(mesh.modelViewMatrix);
+        this.uniforms.normalMatrix.value.copy(mesh.normalMatrix);
+        this.uniforms.projectionMatrix.value.copy(camera.projectionMatrix);
 
-        uniform = this.getUniform('roughnessMap');
-        uniform.value = this.roughnessMap;
+    }
 
-        uniform = this.getUniform('useRoughnessMap');
-        uniform.value = !!this.roughnessMap;
+    public override dispose(): void {
 
-        uniform = this.getUniform('metalness');
-        uniform.value = this.metalness;
-
-        uniform = this.getUniform('metalnessMap');
-        uniform.value = this.metalnessMap;
-
-        uniform = this.getUniform('useMetalnessMap');
-        uniform.value = !!this.metalnessMap;
-
-        uniform = this.getUniform('color');
-        uniform.value.copy(this.color);
-
-        uniform = this.getUniform('modelViewMatrix');
-        uniform.value.copy(mesh.modelViewMatrix);
-
-        uniform = this.getUniform('normalMatrix');
-        uniform.value.copy(mesh.normalMatrix);
-
-        uniform = this.getUniform('projectionMatrix');
-        uniform.value.copy(camera.projectionMatrix);
+        super.emit('dispose');
 
     }
 

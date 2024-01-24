@@ -7,7 +7,7 @@ export type EventParameters = {
 
 export class EventObject {
 
-    private declare handlers: Map<string, Map<Function, Object>> | undefined;
+    declare private handlers: Map<string, Map<Function, Object>> | undefined;
 
     public on(eventName: string, handler: Function, scope: object): void {
 

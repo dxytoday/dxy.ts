@@ -1,11 +1,15 @@
 import { GLBLoader } from "./loaders/GLBLoader";
 import { ImageLoader } from "./loaders/ImageLoader";
+import { PBRMaterial } from "./materials/PBRMaterial";
+import { Attribute } from "./modules/Attribute";
 import { Texture } from "./modules/Texture";
 import { Camera } from "./objects/Camera";
+import { Mesh } from "./objects/Mesh";
 import { Scene } from "./objects/Scene";
-import { TRSNode } from "./objects/TRSNode";
+import { TRSObject } from "./objects/TRSObject";
 import { WebGL } from "./renderer/WebGL";
 import { Color } from "./structs/Color";
+import { Vector3 } from "./structs/Vector3";
 
 export default class Dxy {
 
@@ -88,29 +92,28 @@ export default class Dxy {
 
 		const type: string = parameters.type || 'glb';
 		const url: string = parameters.url;
-		const onLoad: Function = parameters.onLoad;
 
-		if (!url) {
+		switch (type) {
 
-			onLoad && onLoad(false);
-			return;
+			case 'glb':
 
-		}
+				GLBLoader.load(url, (object: TRSObject) => {
 
-		if (type === 'glb') {
+					if (object) {
 
-			GLBLoader.load(url, (object: TRSNode) => {
+						this.scene.add(object);
 
-				this.scene.add(object);
-				onLoad && onLoad(true);
+					}
 
-			});
+				});
 
-			return;
+				break;
 
-		}
+			case 'fbx':
 
-		if (type === 'fbx') {
+
+
+				break;
 
 		}
 
@@ -119,30 +122,43 @@ export default class Dxy {
 	public setBackground(parameters: any = {}): void {
 
 		const type: string = parameters.type;
+		const color: string = parameters.color;
+		const image: string = parameters.image;
+		const skybox: string = parameters.skybox;
 
-		if (type === 'color') {
+		switch (type) {
 
-			this.scene.setBackgroundColor(parameters.color);
+			case 'color':
 
-			return;
+				this.scene.setBackgroundColor(color);
 
-		}
+				break;
 
-		if (type === 'image') {
+			case 'image':
 
-			ImageLoader.load(parameters.url, (image: HTMLImageElement) => {
+				ImageLoader.load(image, (image: HTMLImageElement) => {
 
-				this.scene.setBackgroundImage(image);
+					this.scene.setBackgroundImage(image);
 
-			});
+				});
 
-			return;
+				break;
 
-		}
+			case 'skybox':
 
-		if (type === 'skybox') {
+				ImageLoader.loadArray(
+					[
+						`${skybox}/px.jpg`, `${skybox}/nx.jpg`,
+						`${skybox}/py.jpg`, `${skybox}/ny.jpg`,
+						`${skybox}/pz.jpg`, `${skybox}/nz.jpg`,
+					],
+					(images: HTMLImageElement[]) => {
 
+						this.scene.setBackgroundCube(images);
 
+					});
+
+				break;
 
 		}
 

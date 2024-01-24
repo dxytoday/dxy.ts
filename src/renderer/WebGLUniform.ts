@@ -376,7 +376,13 @@ class FNumberUniform extends WebGLUniform<number>{
 
     public override set(value: number): void {
 
-        if (typeof value === 'number' && value !== this.current) {
+        if (typeof value !== 'number') {
+
+            value = Number(value);
+
+        }
+
+        if (value !== this.current) {
 
             this.current = value;
             this.safeSet();

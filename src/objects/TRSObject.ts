@@ -3,7 +3,7 @@ import { Quaternion } from "../structs/Quaternion";
 import { Vector3 } from "../structs/Vector3";
 import { EventObject } from "../modules/EventObject";
 
-export class TRSNode extends EventObject {
+export class TRSObject extends EventObject {
 
     public name = ''
 
@@ -14,8 +14,8 @@ export class TRSNode extends EventObject {
     public readonly localMatrix = new Matrix4();
     public readonly worldMatrix = new Matrix4();
 
-    public parent: TRSNode | undefined;
-    public readonly children: TRSNode[] = [];
+    public parent: TRSObject | undefined;
+    public readonly children: TRSObject[] = [];
 
     public visible = true;
 
@@ -48,18 +48,18 @@ export class TRSNode extends EventObject {
 
     }
 
-    public add(node: TRSNode): TRSNode {
+    public add(object: TRSObject): TRSObject {
 
-        if (node !== this) {
+        if (object !== this) {
 
-            if (node.parent) {
+            if (object.parent) {
 
-                node.parent.remove(node);
+                object.parent.remove(object);
 
             }
 
-            node.parent = this;
-            this.children.push(node);
+            object.parent = this;
+            this.children.push(object);
 
         }
 
@@ -67,15 +67,15 @@ export class TRSNode extends EventObject {
 
     }
 
-    public remove(node: TRSNode): TRSNode {
+    public remove(object: TRSObject): TRSObject {
 
-        if (node !== this) {
+        if (object !== this) {
 
-            const index = this.children.indexOf(node);
+            const index = this.children.indexOf(object);
 
             if (index !== -1) {
 
-                node.parent = undefined;
+                object.parent = undefined;
                 this.children.splice(index, 1);
 
             }
@@ -83,6 +83,12 @@ export class TRSNode extends EventObject {
         }
 
         return this;
+
+    }
+
+    public dispose(): void {
+
+        this.emit('dispose');
 
     }
 

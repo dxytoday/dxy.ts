@@ -1,45 +1,39 @@
 import { EventObject } from "../modules/EventObject";
-import { Matrix3 } from "../structs/Matrix3";
-import { Matrix4 } from "../structs/Matrix4";
-import { Texture } from "../modules/Texture";
-import { Vector2 } from "../structs/Vector2";
-import { Vector3 } from "../structs/Vector3";
 import { Mesh } from "../objects/Mesh";
 import { Camera } from "../objects/Camera";
 import { Scene } from "../objects/Scene";
-import { Color } from "../structs/Color";
 
-export type UniformValue = undefined | number | boolean | Vector2 | Vector3 | Color | Matrix3 | Matrix4 | Texture;
+export interface IUniform<T = any> {
 
-export type Uniform = {
-
-    value: UniformValue;
-    needsUpdate?: boolean;
+    value: T,
+    needsUpdate?: boolean
 
 }
 
 export abstract class Material extends EventObject {
 
-    public readonly uniforms = new Map<string, Uniform>();
+    public readonly uniforms: { [key: string]: IUniform; } = {};
 
     public name = '';
 
     public transparent = false;
+
+    public depthTest = true;
     public backfaceCulling = true;
 
     public vertexShader = '';
     public fragmentShader = '';
 
-    public setUniform(name: string, value: UniformValue): Material {
+    public setUniform(name: string, value: any): Material {
 
-        this.uniforms.set(name, { value: value });
+        this.uniforms[name] = { value: value };
         return this;
 
     }
 
-    public getUniform(name: string): Uniform | undefined {
+    public getUniform(name: string): IUniform | undefined {
 
-        return this.uniforms.get(name);
+        return this.uniforms[name];
 
     }
 

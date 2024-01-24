@@ -1,7 +1,5 @@
 import { Matrix3 } from "./Matrix3";
 import { Matrix4 } from "./Matrix4";
-import { Spherical } from "./Spherical";
-import { Vector2 } from "./Vector2";
 
 export class Vector3 {
 
@@ -100,6 +98,23 @@ export class Vector3 {
         this.x = x * me[0] + y * me[3] + z * me[6];
         this.y = x * me[1] + y * me[4] + z * me[7];
         this.z = x * me[2] + y * me[5] + z * me[8];
+
+        return this;
+
+    }
+
+    public applyMatrix4(m: Matrix4): Vector3 {
+
+        const x = this.x;
+        const y = this.y;
+        const z = this.z;
+        const e = m.elements;
+
+        const w = 1 / (e[3] * x + e[7] * y + e[11] * z + e[15]);
+
+        this.x = (e[0] * x + e[4] * y + e[8] * z + e[12]) * w;
+        this.y = (e[1] * x + e[5] * y + e[9] * z + e[13]) * w;
+        this.z = (e[2] * x + e[6] * y + e[10] * z + e[14]) * w;
 
         return this;
 

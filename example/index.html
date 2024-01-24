@@ -19,7 +19,6 @@
 
 		#canvas {
 			border: 1px solid black;
-			background-color: #555;
 			width: 700px;
 			height: 700px;
 			margin-top: 20px;
@@ -37,15 +36,25 @@
 		const canvas = document.getElementById("canvas");
 		const dxy = new Dxy(canvas);
 
-		dxy.setBackground({
-			type: 'image',
-			url: './resources/textures/cube/dark-s_nz.jpg',
-		});
+		dxy.setBackground(
+			{
+				// type: 'color',
+				// color: '#ff00ff',
 
-		dxy.loadModel({
-			type: 'glb',
-			url: './resources/models/cube.glb'
-		});
+				// type: 'image',
+				// image: './resources/textures/cube/MilkyWay/nz.jpg',
+
+				type: 'skybox',
+				skybox: './resources/textures/cube/MilkyWay/',
+			}
+		);
+
+		// dxy.loadModel(
+		// 	{
+		// 		type: 'glb',
+		// 		url: './resources/models/cube.glb',
+		// 	}
+		// );
 
 		dxy.camera.position.set(0, 0, 10);
 

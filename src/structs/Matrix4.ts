@@ -1,10 +1,14 @@
 import { Quaternion } from "./Quaternion";
 import { Vector3 } from "./Vector3";
 
-const _up = new Vector3(0, 1, 0);
-const _z = new Vector3();
-const _x = new Vector3();
-const _y = new Vector3();
+class Instances {
+
+    public static readonly up = new Vector3(0, 1, 0);
+    public static readonly x = new Vector3(0, 1, 0);
+    public static readonly y = new Vector3(0, 1, 0);
+    public static readonly z = new Vector3(0, 1, 0);
+
+}
 
 export class Matrix4 {
 
@@ -320,40 +324,40 @@ export class Matrix4 {
 
     public makeLookAt(eye: Vector3, target: Vector3): Matrix4 {
 
-        _z.subVectors(eye, target);
+        Instances.z.subVectors(eye, target);
 
-        if (!_z.length()) {
+        if (!Instances.z.length()) {
 
-            _z.z = 1;
-
-        }
-
-        _z.normalize();
-        _x.crossVectors(_up, _z);
-
-        if (!_x.lengthSq()) {
-
-            _z.z += 0.0001;
-
-            _z.normalize();
-            _x.crossVectors(_up, _z);
+            Instances.z.z = 1;
 
         }
 
-        _x.normalize();
-        _y.crossVectors(_z, _x);
+        Instances.z.normalize();
+        Instances.x.crossVectors(Instances.up, Instances.z);
 
-        this.elements[0] = _x.x;
-        this.elements[1] = _x.y;
-        this.elements[2] = _x.z;
+        if (!Instances.x.lengthSq()) {
 
-        this.elements[4] = _y.x;
-        this.elements[5] = _y.y;
-        this.elements[6] = _y.z;
+            Instances.z.z += 0.0001;
 
-        this.elements[8] = _z.x;
-        this.elements[9] = _z.y;
-        this.elements[10] = _z.z;
+            Instances.z.normalize();
+            Instances.x.crossVectors(Instances.up, Instances.z);
+
+        }
+
+        Instances.x.normalize();
+        Instances.y.crossVectors(Instances.z, Instances.x);
+
+        this.elements[0] = Instances.x.x;
+        this.elements[1] = Instances.x.y;
+        this.elements[2] = Instances.x.z;
+
+        this.elements[4] = Instances.y.x;
+        this.elements[5] = Instances.y.y;
+        this.elements[6] = Instances.y.z;
+
+        this.elements[8] = Instances.z.x;
+        this.elements[9] = Instances.z.y;
+        this.elements[10] = Instances.z.z;
 
         return this;
 

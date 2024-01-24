@@ -1,13 +1,13 @@
-import { Material, Uniform } from "../materials/Material";
+import { Material } from "../materials/Material";
 import { Attribute } from "../modules/Attribute";
 import { Geometry } from "../modules/Geometry";
 import { Texture } from "../modules/Texture";
 import { Camera } from "../objects/Camera";
 import { Mesh } from "../objects/Mesh";
 import { Scene } from "../objects/Scene";
-import { TRSNode } from "../objects/TRSNode";
+import { TRSObject } from "../objects/TRSObject";
 import { Color } from "../structs/Color";
-import { RenderObject, WebGLCache } from "./WebGLCache";
+import { RenderItem, WebGLCache } from "./WebGLCache";
 import { WebGLState } from "./WebGLState";
 
 class ContextHelper {
@@ -66,57 +66,59 @@ export class WebGL {
         scene.ambientLight.update(camera);
         scene.directionalLight.update(camera);
 
-        const renderList: RenderObject[] = [];
+        const renderList: RenderItem[] = [];
         this.projectObject(scene, camera, renderList);
 
         this.renderBackground(scene, camera, renderList);
 
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
 
-        this.renderObject(renderList, scene, camera);
+        this.renderObjects(renderList, scene, camera);
+
+        this.cache.freeRenderItem(renderList);
 
     }
 
-    private projectObject(node: TRSNode, camera: Camera, renderList: RenderObject[]): void {
+    private projectObject(object: TRSObject, camera: Camera, renderList: RenderItem[]): void {
 
-        if (!node.visible) {
+        if (!object.visible) {
 
             return;
 
         }
 
-        node.updateMatrix();
+        object.updateMatrix();
 
-        if (node instanceof Mesh) {
+        if (object instanceof Mesh) {
 
-            node.updateModelViewMatrix(camera.viewMatrix);
+            object.updateModelViewMatrix(camera.viewMatrix);
 
-            const geometry = node.geometry;
+            const geometry = object.geometry;
 
-            if (Array.isArray(node.material)) {
+            if (Array.isArray(object.material)) {
 
-                const materials = node.material;
+                const materials = object.material;
                 const renderGroups = geometry.groups;
 
                 for (const group of renderGroups) {
 
                     const material = materials[group.materialIndex];
 
-                    const object = this.cache.mallocRenderObject(node, geometry, material, group);
-                    renderList.push(object);
+                    const item = this.cache.mallocRenderItem(object, geometry, material, group);
+                    renderList.push(item);
 
                 }
 
             } else {
 
-                const object = this.cache.mallocRenderObject(node, geometry, node.material);
-                renderList.push(object);
+                const item = this.cache.mallocRenderItem(object, geometry, object.material);
+                renderList.push(item);
 
             }
 
         }
 
-        for (const child of node.children) {
+        for (const child of object.children) {
 
             this.projectObject(child, camera, renderList);
 
@@ -124,7 +126,7 @@ export class WebGL {
 
     }
 
-    private renderBackground(scene: Scene, camera: Camera, renderList: RenderObject[]): void {
+    private renderBackground(scene: Scene, camera: Camera, renderList: RenderItem[]): void {
 
         if (scene.background instanceof Color) {
 
@@ -132,7 +134,7 @@ export class WebGL {
 
         } else if (scene.background instanceof Mesh) {
 
-            const renderObject = this.cache.mallocRenderObject(
+            const item = this.cache.mallocRenderItem(
 
                 scene.background,
                 scene.background.geometry,
@@ -140,34 +142,34 @@ export class WebGL {
 
             );
 
-            renderList.unshift(renderObject);
+            renderList.unshift(item);
 
         }
 
     }
 
-    private renderObject(renderObjects: RenderObject[], scene: Scene, camera: Camera): void {
+    private renderObjects(renderList: RenderItem[], scene: Scene, camera: Camera): void {
 
-        for (const object of renderObjects) {
+        for (const item of renderList) {
 
-            const material = object.material as Material;
+            const material = item.material as Material;
             const program = this.cache.acquireProgram(material);
-            object.program = program;
+            item.program = program;
 
             this.state.useProgram(program)
 
-            this.bindGeometry(object);
-            this.applyMaterial(object, scene, camera);
-            this.renderBuffer(object);
+            this.bindGeometry(item);
+            this.applyMaterial(item, scene, camera);
+            this.renderBuffer(item);
 
         }
 
     }
 
-    private bindGeometry(object: RenderObject): void {
+    private bindGeometry(item: RenderItem): void {
 
-        const geometry = object.geometry as Geometry;
-        const program = object.program as WebGLProgram;
+        const geometry = item.geometry as Geometry;
+        const program = item.program as WebGLProgram;
 
         const vao = this.cache.acquireVertexArray(geometry);
 
@@ -226,29 +228,29 @@ export class WebGL {
 
     }
 
-    private applyMaterial(object: RenderObject, scene: Scene, camera: Camera): void {
+    private applyMaterial(item: RenderItem, scene: Scene, camera: Camera): void {
 
-        const mesh = object.mesh as Mesh;
-        const material = object.material as Material;
+        const mesh = item.mesh as Mesh;
+        const material = item.material as Material;
 
         material.onBeforRender(scene, mesh, camera);
 
         const frontFaceCW = mesh.worldMatrix.determinant() < 0;
         this.state.setFrontFace(frontFaceCW);
 
+        this.state.depthTest(material.depthTest);
         this.state.backfaceCulling(material.backfaceCulling);
 
         this.state.resetTextureUnits();
 
-        this.uploadUniform(object);
+        this.uploadUniform(item);
 
     }
 
-    private uploadUniform(object: RenderObject): void {
+    private uploadUniform(item: RenderItem): void {
 
-        const mesh = object.mesh as Mesh;
-        const material = object.material as Material;
-        const program = object.program as WebGLProgram;
+        const material = item.material as Material;
+        const program = item.program as WebGLProgram;
 
         const webglUniforms = this.cache.acquireUniforms(program);
 
@@ -288,6 +290,12 @@ export class WebGL {
     }
 
     private uploadTextureToGPU(texture: Texture, target = this.gl.TEXTURE_2D): void {
+
+        if (!texture.image) {
+
+            return;
+
+        }
 
         let webglTexture = this.cache.getTexture(texture);
 
@@ -335,12 +343,12 @@ export class WebGL {
 
     }
 
-    private renderBuffer(object: RenderObject): void {
+    private renderBuffer(item: RenderItem): void {
 
-        const geometry = object.geometry as Geometry;
-        const group = object.group;
+        const geometry = item.geometry as Geometry;
+        const group = item.group;
 
-        let start = 0, count = Infinity;
+        let start = -Infinity, count = Infinity;
 
         if (group) {
 

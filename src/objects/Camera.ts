@@ -3,12 +3,16 @@ import { Matrix4 } from "../structs/Matrix4";
 import { Spherical } from "../structs/Spherical";
 import { Vector2 } from "../structs/Vector2";
 import { Vector3 } from "../structs/Vector3";
-import { TRSNode } from "./TRSNode";
+import { TRSObject } from "./TRSObject";
 
-const _vevtor3 = new Vector3();
-const _matrix3 = new Matrix3();
-const _matrix4 = new Matrix4();
-const _spherical = new Spherical();
+class Instances {
+
+    public static readonly v3 = new Vector3();
+    public static readonly m3 = new Matrix3();
+    public static readonly m4 = new Matrix4();
+    public static readonly sph = new Spherical();
+
+}
 
 class Controls {
 
@@ -75,19 +79,19 @@ class Controls {
 
         }
 
-        _vevtor3.subVectors(this.camera.position, this.viewPoint);
-        _spherical.setFromVector3(_vevtor3);
+        Instances.v3.subVectors(this.camera.position, this.viewPoint);
+        Instances.sph.setFromVector3(Instances.v3);
 
         // 因为是控制相机旋转，为了让物体旋转方向和鼠标移动方向一致所以用减号
-        _spherical.theta -= this.rotateDelta.x;
-        _spherical.phi -= this.rotateDelta.y;
-        _spherical.makeSafe();
+        Instances.sph.theta -= this.rotateDelta.x;
+        Instances.sph.phi -= this.rotateDelta.y;
+        Instances.sph.makeSafe();
 
-        _spherical.radius *= this.zoom;
-        _spherical.toVector3(_vevtor3);
+        Instances.sph.radius *= this.zoom;
+        Instances.sph.toVector3(Instances.v3);
 
         this.camera.position.copy(this.viewPoint);
-        this.camera.position.add(_vevtor3);
+        this.camera.position.add(Instances.v3);
 
         this.viewPoint.sub(this.panOffset);
 
@@ -156,12 +160,12 @@ class Controls {
             this.panStart.multiplyScalar(2 * edge / this.canvas.height);
 
             // 从相机空间转换到世界空间，-y 是因为像素 ↓ 为正 webgl ↑ 为正
-            _vevtor3.set(this.panStart.x, -this.panStart.y, 0);
-            _matrix3.setFromMatrix4(this.camera.worldMatrix);
-            _vevtor3.applyMatrix3(_matrix3);
+            Instances.v3.set(this.panStart.x, -this.panStart.y, 0);
+            Instances.m3.setFromMatrix4(this.camera.worldMatrix);
+            Instances.v3.applyMatrix3(Instances.m3);
 
             // 累计计算结果
-            this.panOffset.add(_vevtor3);
+            this.panOffset.add(Instances.v3);
 
             this.panStart.copy(this.panEnd);
 
@@ -198,7 +202,7 @@ class Controls {
 
 }
 
-export class Camera extends TRSNode {
+export class Camera extends TRSObject {
 
     public readonly controls: Controls;
 
@@ -207,7 +211,7 @@ export class Camera extends TRSNode {
 
     public fov = 50;
     public aspect = 1;
-    public near = 0.001;
+    public near = 1;
     public far = 2000;
 
     public constructor(canvas: HTMLCanvasElement) {
@@ -248,8 +252,8 @@ export class Camera extends TRSNode {
 
     public lookAt(target: Vector3): void {
 
-        _matrix4.makeLookAt(this.position, target);
-        this.rotation.setFromMatrix4(_matrix4);
+        Instances.m4.makeLookAt(this.position, target);
+        this.rotation.setFromMatrix4(Instances.m4);
 
     }
 

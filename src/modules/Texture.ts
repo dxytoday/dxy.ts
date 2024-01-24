@@ -12,11 +12,23 @@ export class Texture extends EventObject {
 
     public needsUpdate = false;
 
-    public constructor(
+    public constructor(public image?: TexImage) {
 
-        public image: TexImage
+        super();
 
-    ) {
+    }
+
+    public dispose(): void {
+
+        this.emit('dispose');
+
+    }
+
+}
+
+export class CubeTexture extends Texture {
+
+    public constructor(public images: TexImage[]) {
 
         super();
 

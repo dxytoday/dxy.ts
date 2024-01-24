@@ -1,13 +1,17 @@
-import { BgMaterial } from "../materials/BgMaterial";
+import { BGMaterial } from "../materials/BGMaterial";
+import { Material } from "../materials/Material";
 import { Attribute } from "../modules/Attribute";
 import { Geometry } from "../modules/Geometry";
-import { Texture } from "../modules/Texture";
+import { TexImage, Texture } from "../modules/Texture";
 import { Color } from "../structs/Color";
 import { Light } from "./Light";
 import { Mesh } from "./Mesh";
-import { TRSNode } from "./TRSNode";
+import { TRSObject } from "./TRSObject";
 
-export class Scene extends TRSNode {
+export class Scene extends TRSObject {
+
+    private static planeMesh: Mesh | undefined;
+    private static cubeMesh: Mesh | undefined;
 
     public background: undefined | Color | Mesh;
 
@@ -37,7 +41,7 @@ export class Scene extends TRSNode {
 
         if (this.background instanceof Mesh) {
 
-            // dispose
+            this.background.dispose();
 
         }
 
@@ -46,18 +50,11 @@ export class Scene extends TRSNode {
 
     }
 
-    public setBackgroundImage(image: HTMLImageElement): void {
+    public setBackgroundImage(image: TexImage): void {
 
-        if (
+        if (!Scene.planeMesh) {
 
-            !(this.background instanceof Mesh) ||
-            this.background.name !== 'image-background'
-
-        ) {
-
-            // dispose
-
-            const vertices = [-1, 1, -1, -1, 1, 1, -1, -1, 1, -1, 1, 1,];
+            const vertices = [-1, 1, -1, -1, 1, 1, -1, -1, 1, -1, 1, 1];
             const position = new Attribute(new Float32Array(vertices), 2);
 
             const uvs = [0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1];
@@ -67,44 +64,56 @@ export class Scene extends TRSNode {
             geometry.setAttribute('position', position);
             geometry.setAttribute('uv', uv);
 
-            this.background = new Mesh(geometry, new BgMaterial());
-            this.background.name = 'image-background';
+            Scene.planeMesh = new Mesh(geometry, new BGMaterial());
 
         }
 
-        const material = this.background.material as BgMaterial;
+        this.background = Scene.planeMesh;
+
+        const material = this.background.material as BGMaterial;
+
+        material.map && material.map.dispose();
         material.map = new Texture(image);
 
     }
 
-    public setBackgroundCube(image: HTMLImageElement): void {
+    public setBackgroundCube(images: TexImage[]): void {
 
-        if (
+        if (!Scene.cubeMesh) {
 
-            !(this.background instanceof Mesh) ||
-            this.background.name !== 'image-background'
+            const DLF = [-0.5, -0.5, 0.5]; // down left front 1
+            const DRF = [0.5, -0.5, 0.5]; // down right front 2
+            const URF = [0.5, 0.5, 0.5]; // up right font 3
+            const ULF = [-0.5, 0.5, -0.5]; // up left front 4
+            const DLB = [-0.5, -0.5, -0.5]; // down left back 5
+            const DRB = [0.5, -0.5, -0.5]; // down right back 6
+            const URB = [0.5, 0.5, -0.5]; // up right back 7
+            const ULB = [-0.5, 0.5, -0.5]; // up left back 8
 
-        ) {
+            const vertices = [
 
-            // dispose
+                ULF, ULB, URB, ULF, URB, URF, // up
+                DLB, DLF, DRF, DLB, DRF, DRB, // down
+                DLB, ULB, ULF, DLB, ULF, DLF, // left
+                DRF, URF, URB, DRF, URB, DRB, // right
+                DLF, ULF, URF, DLF, URF, DRF, // front
+                DRB, URB, ULB, DRB, ULB, DLB, // back
 
-            const vertices = [-1, 1, -1, -1, 1, 1, -1, -1, 1, -1, 1, 1,];
-            const position = new Attribute(new Float32Array(vertices), 2);
+            ].flat();
 
-            const uvs = [0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1];
-            const uv = new Attribute(new Float32Array(uvs), 2);
+            const position = new Attribute(new Float32Array(vertices), 3);
 
             const geometry = new Geometry();
             geometry.setAttribute('position', position);
-            geometry.setAttribute('uv', uv);
 
-            this.background = new Mesh(geometry, new BgMaterial());
-            this.background.name = 'cube-background';
+            const material = new BGMaterial();
+            material.isCube = true;
+
+            Scene.cubeMesh = new Mesh(geometry, material);
 
         }
 
-        const material = this.background.material as BgMaterial;
-        material.map = new Texture(image);
+        this.background = Scene.cubeMesh;
 
     }
 

@@ -1,11 +1,18 @@
-import { Material, Uniform } from "./Material";
-import vertexShader from './shaders/background.vert.glsl';
-import fragmentShader from './shaders/background.frag.glsl';
+import { IUniform, Material } from "./Material";
+import vertexShader from './shaders/BG.vert.glsl';
+import fragmentShader from './shaders/BG.frag.glsl';
 import { Texture } from "../modules/Texture";
 
-export class BgMaterial extends Material {
+type BGRUniforms = {
 
-    public readonly mapUniform: Uniform;
+    map: IUniform<Texture | undefined>;
+    isCube: IUniform<boolean>;
+
+}
+
+export class BGMaterial extends Material {
+
+    declare public uniforms: BGRUniforms;
 
     public constructor() {
 
@@ -14,20 +21,40 @@ export class BgMaterial extends Material {
         this.vertexShader = vertexShader;
         this.fragmentShader = fragmentShader;
 
+        this.depthTest = false;
+
         this.setUniform('map', undefined);
-        this.mapUniform = this.getUniform('map') as Uniform;
+        this.setUniform('isCube', false);
 
     }
 
     public get map(): Texture | undefined {
 
-        return this.mapUniform.value as Texture;
+        return this.uniforms.map.value;
 
     }
 
     public set map(map: Texture) {
 
-        this.mapUniform.value = map;
+        this.uniforms.map.value = map;
+
+    }
+
+    public get isCube(): boolean {
+
+        return this.uniforms.isCube.value;
+
+    }
+
+    public set isCube(flag: boolean) {
+
+        this.uniforms.isCube.value = !!flag;
+
+    }
+
+    public override dispose(): void {
+
+        super.emit('dispose');
 
     }
 

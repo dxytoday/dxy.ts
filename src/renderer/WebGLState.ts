@@ -39,6 +39,9 @@ export class WebGLState {
 
         // gl.pixelStorei(gl.UNPACK_ALIGNMENT, texture.unpackAlignment);
 
+        // gl.enable(gl.DEPTH_TEST);
+        // gl.depthMask(true);
+
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
     }

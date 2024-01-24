@@ -4,7 +4,7 @@ import { Attribute, TypedArray } from "../modules/Attribute";
 import { Geometry } from "../modules/Geometry";
 import { Texture } from "../modules/Texture";
 import { Mesh } from "../objects/Mesh";
-import { TRSNode } from "../objects/TRSNode";
+import { TRSObject } from "../objects/TRSObject";
 import { WebGLConstants } from "../renderer/WebGLConstants";
 
 class GLBHelper {
@@ -311,11 +311,11 @@ class GBL {
 
     ) { }
 
-    public async parse(): Promise<TRSNode | undefined> {
+    public async parse(): Promise<TRSObject | undefined> {
 
         await this.requestData();
 
-        let scene: TRSNode | undefined;
+        let scene: TRSObject | undefined;
 
         if (this.objectDef.scenes) {
 
@@ -380,11 +380,11 @@ class GBL {
 
     }
 
-    private async loadScene(index: number): Promise<TRSNode> {
+    private async loadScene(index: number): Promise<TRSObject> {
 
         const sceneDef = this.objectDef.scenes[index];
 
-        const scene = new TRSNode();
+        const scene = new TRSObject();
         scene.name = sceneDef.name || '';
 
         for (const nodeIndex of sceneDef.nodes) {
@@ -398,7 +398,7 @@ class GBL {
 
     }
 
-    private async loadNode(index: number): Promise<TRSNode> {
+    private async loadNode(index: number): Promise<TRSObject> {
 
         const nodeDef = this.objectDef.nodes[index];
 
@@ -408,7 +408,7 @@ class GBL {
 
         }
 
-        let node: TRSNode;
+        let node: TRSObject;
 
         if (nodeDef.mesh !== undefined) {
 
@@ -416,7 +416,7 @@ class GBL {
 
         } else {
 
-            node = new TRSNode();
+            node = new TRSObject();
 
         }
 
@@ -785,7 +785,7 @@ class GBL {
 
 export class GLBLoader {
 
-    public static async load(url: string, onLoad?: Function): Promise<TRSNode | undefined> {
+    public static async load(url: string, onLoad?: Function): Promise<TRSObject | undefined> {
 
         return new GBL(url, onLoad).parse();
 

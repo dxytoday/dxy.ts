@@ -2,11 +2,15 @@ import { Color } from "../structs/Color";
 import { Matrix3 } from "../structs/Matrix3";
 import { Vector3 } from "../structs/Vector3";
 import { Camera } from "./Camera";
-import { TRSNode } from "./TRSNode";
+import { TRSObject } from "./TRSObject";
 
-const _matrix3 = new Matrix3();
+class Instances {
 
-export class Light extends TRSNode {
+    public static readonly m3 = new Matrix3();
+
+}
+
+export class Light extends TRSObject {
 
     public readonly lightColor = new Color(1, 1, 1);
     public lightIntensity = 1;
@@ -31,8 +35,8 @@ export class Light extends TRSNode {
         this.direction.copy(this.position);
         this.direction.sub(this.target);
 
-        _matrix3.setFromMatrix4(camera.viewMatrix)
-        this.direction.applyMatrix3(_matrix3);
+        Instances.m3.setFromMatrix4(camera.viewMatrix)
+        this.direction.applyMatrix3(Instances.m3);
 
     }
 

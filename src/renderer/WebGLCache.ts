@@ -8,7 +8,7 @@ import { WebGL } from "./WebGL";
 import { WebGLAttribute } from "./WebGLAttribute";
 import { WebGLUniform } from "./WebGLUniform";
 
-export type RenderObject = {
+export type RenderItem = {
 
     mesh?: Mesh;
     geometry?: Geometry;
@@ -37,7 +37,7 @@ class WebGLCacheHelper {
 
 export class WebGLCache {
 
-    private static readonly renderObjects: RenderObject[] = [];
+    private static readonly renderItems: RenderItem[] = [];
 
     private readonly programs = new Map<string, WebGLProgram>();
     private readonly shaders = new Map<string, WebGLShader>();
@@ -56,9 +56,9 @@ export class WebGLCache {
 
     ) { }
 
-    public mallocRenderObject(mesh: Mesh, geometry: Geometry, material: Material, group?: RenderGroup): RenderObject {
+    public mallocRenderItem(mesh: Mesh, geometry: Geometry, material: Material, group?: RenderGroup): RenderItem {
 
-        const item = WebGLCache.renderObjects.shift() || {};
+        const item = WebGLCache.renderItems.shift() || {};
 
         item.mesh = mesh;
         item.geometry = geometry;
@@ -69,7 +69,7 @@ export class WebGLCache {
 
     }
 
-    public freeRenderObject(items: RenderObject[]): void {
+    public freeRenderItem(items: RenderItem[]): void {
 
         for (const item of items) {
 
@@ -80,7 +80,7 @@ export class WebGLCache {
 
             item.program = undefined;
 
-            WebGLCache.renderObjects.push(item);
+            WebGLCache.renderItems.push(item);
 
         }
 

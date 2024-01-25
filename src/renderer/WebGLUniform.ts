@@ -128,8 +128,9 @@ class WebGLUniformHelper {
                 break;
 
             case gl.SAMPLER_2D:
+            case gl.SAMPLER_CUBE:
 
-                uniform = new INumberUniform(gl, info, location, name);
+                uniform = new TextureUniform(gl, info, location, name);
                 break;
 
             default:
@@ -251,7 +252,6 @@ class WebGLUniformHelper {
         WebGLUniformHelper.createSingle(gl, info, location, path, struct.uniforms);
 
     }
-
 
 }
 
@@ -408,6 +408,8 @@ class INumberUniform extends FNumberUniform {
     }
 
 }
+
+export class TextureUniform extends INumberUniform { }
 
 class StructUniform extends WebGLUniform<object> {
 

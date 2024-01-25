@@ -1,5 +1,6 @@
 import { Matrix3 } from "../structs/Matrix3";
 import { Matrix4 } from "../structs/Matrix4";
+import { Quaternion } from "../structs/Quaternion";
 import { Spherical } from "../structs/Spherical";
 import { Vector2 } from "../structs/Vector2";
 import { Vector3 } from "../structs/Vector3";
@@ -19,8 +20,6 @@ class Controls {
     public readonly dispose: () => void;
 
     private state = 'none'; // pan zoom rotate none
-
-    public readonly viewPoint = new Vector3();
 
     private readonly rotateStart = new Vector2();
     private readonly rotateEnd = new Vector2();
@@ -65,41 +64,65 @@ class Controls {
 
     }
 
-    public update(): void {
+    private get position(): Vector3 {
 
-        if (
+        return this.camera.position;
 
-            this.rotateDelta.equalsScalar(0) &&
-            this.panOffset.equalsScalar(0) &&
-            this.zoom === 1
+    }
 
-        ) {
+    private get rotation(): Quaternion {
 
-            return;
+        return this.camera.rotation;
+
+    }
+
+    private get viewPoint(): Vector3 {
+
+        if (this.camera.viewPoint instanceof TRSObject) {
+
+            return this.camera.viewPoint.position;
+
+        } else {
+
+            return this.camera.viewPoint;
 
         }
 
-        Instances.v3.subVectors(this.camera.position, this.viewPoint);
-        Instances.sph.setFromVector3(Instances.v3);
+    }
 
-        // 因为是控制相机旋转，为了让物体旋转方向和鼠标移动方向一致所以用减号
-        Instances.sph.theta -= this.rotateDelta.x;
-        Instances.sph.phi -= this.rotateDelta.y;
-        Instances.sph.makeSafe();
+    public update(): void {
 
-        Instances.sph.radius *= this.zoom;
-        Instances.sph.toVector3(Instances.v3);
+        if (!this.rotateDelta.equalsScalar(0) || this.zoom !== 1) {
 
-        this.camera.position.copy(this.viewPoint);
-        this.camera.position.add(Instances.v3);
+            Instances.v3.subVectors(this.position, this.viewPoint);
 
-        this.viewPoint.sub(this.panOffset);
+            Instances.sph.setFromVector3(Instances.v3);
 
-        this.camera.lookAt(this.viewPoint);
+            // 因为是控制相机旋转，为了让物体旋转方向和鼠标移动方向一致所以用减号
+            Instances.sph.theta -= this.rotateDelta.x;
+            Instances.sph.phi -= this.rotateDelta.y;
+            Instances.sph.makeSafe();
 
-        this.rotateDelta.setScalar(0);
-        this.panOffset.setScalar(0);
-        this.zoom = 1;
+            Instances.sph.radius *= this.zoom;
+            Instances.sph.toVector3(Instances.v3);
+
+            this.position.copy(this.viewPoint);
+            this.position.add(Instances.v3);
+
+            this.rotateDelta.setScalar(0);
+            this.zoom = 1;
+
+        }
+
+        if (!this.panOffset.equalsScalar(0)) {
+
+            this.viewPoint.sub(this.panOffset);
+            this.panOffset.setScalar(0);
+
+        }
+
+        Instances.m4.makeLookAt(this.position, this.viewPoint);
+        this.rotation.setFromMatrix4(Instances.m4);
 
     }
 
@@ -153,7 +176,7 @@ class Controls {
 
             // 计算以 fov 为夹角的中心到顶部的距离
             const halfFov = this.camera.fov / 360 * Math.PI;
-            let edge = this.camera.position.distanceTo(this.viewPoint);
+            let edge = this.position.distanceTo(this.viewPoint);
             edge *= Math.tan(halfFov);
 
             // 以 [画布高度 = fov 垂直距离] 为基准，计算 xy 移动的等比例距离
@@ -204,6 +227,8 @@ class Controls {
 
 export class Camera extends TRSObject {
 
+    public viewPoint: Vector3 | TRSObject = new Vector3();
+
     public readonly controls: Controls;
 
     public readonly viewMatrix = new Matrix4();
@@ -247,13 +272,6 @@ export class Camera extends TRSObject {
         const left = -right;
 
         this.projectionMatrix.makePerspective(left, right, top, bottom, near, far);
-
-    }
-
-    public lookAt(target: Vector3): void {
-
-        Instances.m4.makeLookAt(this.position, target);
-        this.rotation.setFromMatrix4(Instances.m4);
 
     }
 

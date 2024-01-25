@@ -1,7 +1,7 @@
 import { Material } from "../materials/Material";
 import { Attribute } from "../modules/Attribute";
 import { Geometry } from "../modules/Geometry";
-import { Texture } from "../modules/Texture";
+import { CubeTexture, Texture } from "../modules/Texture";
 import { Camera } from "../objects/Camera";
 import { Mesh } from "../objects/Mesh";
 import { Scene } from "../objects/Scene";
@@ -9,6 +9,7 @@ import { TRSObject } from "../objects/TRSObject";
 import { Color } from "../structs/Color";
 import { RenderItem, WebGLCache } from "./WebGLCache";
 import { WebGLState } from "./WebGLState";
+import { TextureUniform } from "./WebGLUniform";
 
 class ContextHelper {
 
@@ -188,7 +189,7 @@ export class WebGL {
 
             }
 
-            this.uploadAttributeToGPU(attribute, this.gl.ARRAY_BUFFER);
+            this.uploadAttributeToGPU(this.gl.ARRAY_BUFFER, attribute);
 
             webglAttribute.bind(attribute, vao);
 
@@ -196,13 +197,13 @@ export class WebGL {
 
         if (geometry.indices !== undefined) {
 
-            this.uploadAttributeToGPU(geometry.indices, this.gl.ELEMENT_ARRAY_BUFFER);
+            this.uploadAttributeToGPU(this.gl.ELEMENT_ARRAY_BUFFER, geometry.indices);
 
         }
 
     }
 
-    private uploadAttributeToGPU(attribute: Attribute, target: number): void {
+    private uploadAttributeToGPU(target: number, attribute: Attribute): void {
 
         let buffer = this.cache.getBuffer(attribute);
 
@@ -258,86 +259,130 @@ export class WebGL {
 
             const uniform = material.getUniform(webglUniform.name);
 
-            if (
-
-                !uniform ||
-                uniform.needsUpdate === false ||
-                uniform.value === undefined
-
-            ) {
-
-                continue;
-
-            }
-
-            let value = uniform.value;
-
-            if (value instanceof Texture) {
+            if (webglUniform instanceof TextureUniform) {
 
                 const unit = this.state.allocateTextureUnits();
-                this.state.activeTexture(unit);
 
-                this.uploadTextureToGPU(value);
+                if (uniform && uniform.value) {
 
-                value = unit;
+                    this.state.activeTexture(unit);
+                    this.uploadTextureToGPU(uniform.value);
+
+                }
+
+                webglUniform.set(unit);
+
+            } else if (uniform) {
+
+                webglUniform.set(uniform.value);
 
             }
-
-            webglUniform.set(value);
 
         }
 
     }
 
-    private uploadTextureToGPU(texture: Texture, target = this.gl.TEXTURE_2D): void {
-
-        if (!texture.image) {
-
-            return;
-
-        }
+    private uploadTextureToGPU(texture: Texture): void {
 
         let webglTexture = this.cache.getTexture(texture);
 
-        if (webglTexture === undefined) {
+        if (texture instanceof CubeTexture && texture.images && texture.images.length >= 6) {
 
-            webglTexture = this.cache.acquireTexture(texture);
-            this.state.bindTexture(webglTexture);
+            const target = this.gl.TEXTURE_CUBE_MAP;
 
-            const levels = 1;						// 贴图级别
-            const format = this.gl.RGBA8;			// 纹理格式
-            const width = texture.image.width;		// 宽度
-            const height = texture.image.height;	// 高度
+            if (!webglTexture) {
 
-            this.gl.texStorage2D(target, levels, format, width, height);
+                webglTexture = this.cache.acquireTexture(texture);
+                this.state.bindTexture(target, webglTexture);
 
-            texture.needsUpdate = true;
+                const levels = 1;						// 贴图级别
+                const format = this.gl.RGBA8;			// 纹理格式
+                const width = texture.images[0].width;		// 宽度
+                const height = texture.images[0].height;	// 高度
 
-        }
+                this.gl.texStorage2D(target, levels, format, width, height);
 
-        if (texture.needsUpdate === true) {
+                texture.needsUpdate = true;
 
-            this.state.bindTexture(webglTexture);
+            }
 
-            this.gl.texParameteri(target, this.gl.TEXTURE_WRAP_S, texture.wrapS);
-            this.gl.texParameteri(target, this.gl.TEXTURE_WRAP_T, texture.wrapT);
-            this.gl.texParameteri(target, this.gl.TEXTURE_MAG_FILTER, texture.magFilter);
-            this.gl.texParameteri(target, this.gl.TEXTURE_MIN_FILTER, texture.minFilter);
+            if (texture.needsUpdate === true) {
 
-            const level = 0;					    // 贴图级别
-            const xoffset = 0;					    // x 偏移
-            const yoffset = 0;					    // y 偏移
-            const format = this.gl.RGBA;			// 纹理格式
-            const type = this.gl.UNSIGNED_BYTE;		// 数据类型
+                this.state.bindTexture(target, webglTexture);
 
-            this.gl.texSubImage2D(target, level, xoffset, yoffset, format, type, texture.image);
-            this.gl.generateMipmap(target);
+                this.gl.texParameteri(target, this.gl.TEXTURE_WRAP_S, texture.wrapS);
+                this.gl.texParameteri(target, this.gl.TEXTURE_WRAP_T, texture.wrapT);
+                this.gl.texParameteri(target, this.gl.TEXTURE_MAG_FILTER, texture.magFilter);
+                this.gl.texParameteri(target, this.gl.TEXTURE_MIN_FILTER, texture.minFilter);
 
-            texture.needsUpdate = false;
+                const pxTarget = this.gl.TEXTURE_CUBE_MAP_POSITIVE_X;
+                const level = 0;					    // 贴图级别
+                const xoffset = 0;					    // x 偏移
+                const yoffset = 0;					    // y 偏移
+                const format = this.gl.RGBA;			// 纹理格式
+                const type = this.gl.UNSIGNED_BYTE;		// 数据类型
 
-        } else {
+                for (let ii = 0; ii < 6; ii++) {
 
-            this.state.bindTexture(webglTexture);
+                    this.gl.texSubImage2D(pxTarget + ii, level, xoffset, yoffset, format, type, texture.images[ii]);
+
+                }
+
+                this.gl.generateMipmap(target);
+
+                texture.needsUpdate = false;
+
+            } else {
+
+                this.state.bindTexture(target, webglTexture);
+
+            }
+
+        } else if (texture instanceof Texture && texture.image) {
+
+            const target = this.gl.TEXTURE_2D;
+
+            if (!webglTexture) {
+
+                webglTexture = this.cache.acquireTexture(texture);
+                this.state.bindTexture(target, webglTexture);
+
+                const levels = 1;						// 贴图级别
+                const format = this.gl.RGBA8;			// 纹理格式
+                const width = texture.image.width;		// 宽度
+                const height = texture.image.height;	// 高度
+
+                this.gl.texStorage2D(target, levels, format, width, height);
+
+                texture.needsUpdate = true;
+
+            }
+
+            if (texture.needsUpdate === true) {
+
+                this.state.bindTexture(target, webglTexture);
+
+                this.gl.texParameteri(target, this.gl.TEXTURE_WRAP_S, texture.wrapS);
+                this.gl.texParameteri(target, this.gl.TEXTURE_WRAP_T, texture.wrapT);
+                this.gl.texParameteri(target, this.gl.TEXTURE_MAG_FILTER, texture.magFilter);
+                this.gl.texParameteri(target, this.gl.TEXTURE_MIN_FILTER, texture.minFilter);
+
+                const level = 0;					    // 贴图级别
+                const xoffset = 0;					    // x 偏移
+                const yoffset = 0;					    // y 偏移
+                const format = this.gl.RGBA;			// 纹理格式
+                const type = this.gl.UNSIGNED_BYTE;		// 数据类型
+
+                this.gl.texSubImage2D(target, level, xoffset, yoffset, format, type, texture.image);
+                this.gl.generateMipmap(target);
+
+                texture.needsUpdate = false;
+
+            } else {
+
+                this.state.bindTexture(target, webglTexture);
+
+            }
 
         }
 

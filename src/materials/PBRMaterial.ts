@@ -29,6 +29,9 @@ type PBRUniforms = {
     normalMatrix: IUniform<Matrix3>;
     projectionMatrix: IUniform<Matrix4>;
 
+    useNormal: IUniform<boolean>;
+    useUV: IUniform<boolean>;
+
 }
 
 export class PBRMaterial extends Material {
@@ -77,6 +80,9 @@ export class PBRMaterial extends Material {
         this.setUniform('normalMatrix', new Matrix3());
         this.setUniform('projectionMatrix', new Matrix4());
 
+        this.setUniform('useNormal', false);
+        this.setUniform('useUV', false);
+
     }
 
     public override onBeforRender(scene: Scene, mesh: Mesh, camera: Camera): void {
@@ -98,6 +104,9 @@ export class PBRMaterial extends Material {
         this.uniforms.modelViewMatrix.value.copy(mesh.modelViewMatrix);
         this.uniforms.normalMatrix.value.copy(mesh.normalMatrix);
         this.uniforms.projectionMatrix.value.copy(camera.projectionMatrix);
+
+        this.uniforms.useNormal.value = mesh.geometry.hasAttribute('normal');
+        this.uniforms.useUV.value = mesh.geometry.hasAttribute('uv');
 
     }
 

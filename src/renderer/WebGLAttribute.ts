@@ -60,6 +60,12 @@ export class WebGLAttribute {
 
         const buffer = this.cache.getBuffer(attribute);
 
+        if (!buffer) {
+
+            return;
+
+        }
+
         let pointerInfo = this.pointerVAOs.get(vao);
 
         if (!pointerInfo) {

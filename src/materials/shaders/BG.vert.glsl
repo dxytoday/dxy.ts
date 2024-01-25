@@ -4,6 +4,8 @@ in vec3 position;
 in vec2 uv;
 
 uniform bool isCube;
+uniform mat4 viewMatrix;
+uniform mat4 projectionMatrix;
 
 out vec2 vUv;
 out vec3 v_position;
@@ -14,8 +16,13 @@ void main() {
 
     if(isCube) {
 
-        v_position = position;
-        gl_Position = vec4(position, 1);
+        v_position = normalize(position);
+
+        vec4 mvPosition = viewMatrix * vec4(position, 0);
+        mvPosition.w = 1.0f;
+
+        gl_Position = projectionMatrix * mvPosition;
+        gl_Position.z = gl_Position.w;
 
     } else {
 

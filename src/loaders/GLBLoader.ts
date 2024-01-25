@@ -141,15 +141,19 @@ class GLBHelper {
 
         const merge = new Geometry();
 
-        if (!geometries.length || !geometries[0].attributes.size) {
+        if (!geometries.length) {
 
             return merge;
 
         }
 
-        const usedIndices = geometries[0].indices !== undefined;
-        const usedNames = Array.from(geometries[0].attributes.keys());
+        const usedNames = Object.keys(geometries[0].attributes);
 
+        if (!usedNames.length) {
+            return merge;
+        }
+
+        const usedIndices = geometries[0].indices !== undefined;
         const allAttributes: Attribute[][] = [];
 
         let startIndex = 0;

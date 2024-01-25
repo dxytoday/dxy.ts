@@ -5,8 +5,7 @@ import { Scene } from "../objects/Scene";
 
 export interface IUniform<T = any> {
 
-    value: T,
-    needsUpdate?: boolean
+    value: T
 
 }
 

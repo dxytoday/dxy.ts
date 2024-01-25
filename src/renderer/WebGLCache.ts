@@ -221,9 +221,9 @@ export class WebGLCache {
 
     }
 
-    public getBuffer(attribute: Attribute): WebGLBuffer {
+    public getBuffer(attribute: Attribute): WebGLBuffer | undefined {
 
-        return this.buffers.get(attribute) as WebGLBuffer;
+        return this.buffers.get(attribute);
 
     }
 
@@ -263,9 +263,9 @@ export class WebGLCache {
 
     }
 
-    public getTexture(texture: Texture): WebGLTexture {
+    public getTexture(texture: Texture): WebGLTexture | undefined {
 
-        return this.textures.get(texture) as WebGLTexture;
+        return this.textures.get(texture);
 
     }
 

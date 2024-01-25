@@ -1,13 +1,19 @@
 import { IUniform, Material } from "./Material";
 import vertexShader from './shaders/BG.vert.glsl';
 import fragmentShader from './shaders/BG.frag.glsl';
-import { Texture } from "../modules/Texture";
+import { CubeTexture, Texture } from "../modules/Texture";
+import { Camera } from "../objects/Camera";
+import { Mesh } from "../objects/Mesh";
+import { Scene } from "../objects/Scene";
+import { Matrix4 } from "../structs/Matrix4";
 
 type BGRUniforms = {
 
     map: IUniform<Texture | undefined>;
+    cube: IUniform<CubeTexture | undefined>;
     isCube: IUniform<boolean>;
-
+    viewMatrix: IUniform<Matrix4>;
+    projectionMatrix: IUniform<Matrix4>;
 }
 
 export class BGMaterial extends Material {
@@ -24,7 +30,10 @@ export class BGMaterial extends Material {
         this.depthTest = false;
 
         this.setUniform('map', undefined);
+        this.setUniform('cube', undefined);
         this.setUniform('isCube', false);
+        this.setUniform('viewMatrix', new Matrix4());
+        this.setUniform('projectionMatrix', new Matrix4());
 
     }
 
@@ -40,6 +49,18 @@ export class BGMaterial extends Material {
 
     }
 
+    public get cube(): CubeTexture | undefined {
+
+        return this.uniforms.cube.value;
+
+    }
+
+    public set cube(cube: CubeTexture) {
+
+        this.uniforms.cube.value = cube;
+
+    }
+
     public get isCube(): boolean {
 
         return this.uniforms.isCube.value;
@@ -49,6 +70,17 @@ export class BGMaterial extends Material {
     public set isCube(flag: boolean) {
 
         this.uniforms.isCube.value = !!flag;
+
+    }
+
+    public override onBeforRender(scene: Scene, mesh: Mesh, camera: Camera): void {
+
+        if (this.isCube) {
+
+            this.uniforms.viewMatrix.value.copy(camera.viewMatrix);
+            this.uniforms.projectionMatrix.value.copy(camera.projectionMatrix);
+
+        }
 
     }
 

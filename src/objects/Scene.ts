@@ -2,7 +2,7 @@ import { BGMaterial } from "../materials/BGMaterial";
 import { Material } from "../materials/Material";
 import { Attribute } from "../modules/Attribute";
 import { Geometry } from "../modules/Geometry";
-import { TexImage, Texture } from "../modules/Texture";
+import { CubeTexture, TexImage, Texture } from "../modules/Texture";
 import { Color } from "../structs/Color";
 import { Light } from "./Light";
 import { Mesh } from "./Mesh";
@@ -71,7 +71,6 @@ export class Scene extends TRSObject {
         this.background = Scene.planeMesh;
 
         const material = this.background.material as BGMaterial;
-
         material.map && material.map.dispose();
         material.map = new Texture(image);
 
@@ -84,7 +83,7 @@ export class Scene extends TRSObject {
             const DLF = [-0.5, -0.5, 0.5]; // down left front 1
             const DRF = [0.5, -0.5, 0.5]; // down right front 2
             const URF = [0.5, 0.5, 0.5]; // up right font 3
-            const ULF = [-0.5, 0.5, -0.5]; // up left front 4
+            const ULF = [-0.5, 0.5, 0.5]; // up left front 4
             const DLB = [-0.5, -0.5, -0.5]; // down left back 5
             const DRB = [0.5, -0.5, -0.5]; // down right back 6
             const URB = [0.5, 0.5, -0.5]; // up right back 7
@@ -114,6 +113,10 @@ export class Scene extends TRSObject {
         }
 
         this.background = Scene.cubeMesh;
+
+        const material = this.background.material as BGMaterial;
+        material.cube && material.cube.dispose();
+        material.cube = new CubeTexture(images);
 
     }
 

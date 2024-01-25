@@ -16,6 +16,7 @@ export class WebGLState {
     private textureUnits = 0;
     private textureUnit = 0;
     private texture2D: WebGLTexture | undefined;
+    private textureCubeMap: WebGLTexture | undefined;
 
     public frontFace = false;
 
@@ -42,7 +43,7 @@ export class WebGLState {
         // gl.enable(gl.DEPTH_TEST);
         // gl.depthMask(true);
 
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        // gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
     }
 
@@ -101,12 +102,24 @@ export class WebGLState {
 
     }
 
-    public bindTexture(texture: WebGLTexture): void {
+    public bindTexture(target: number, texture: WebGLTexture): void {
 
-        if (this.texture2D !== texture) {
+        if (target === this.gl.TEXTURE_2D && this.texture2D !== texture) {
 
-            this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+            this.gl.bindTexture(target, texture);
             this.texture2D = texture;
+
+            return;
+
+        }
+
+        if (target === this.gl.TEXTURE_CUBE_MAP && this.textureCubeMap !== texture) {
+
+
+            this.gl.bindTexture(target, texture);
+            this.textureCubeMap = texture;
+
+            return;
 
         }
 
@@ -123,19 +136,23 @@ export class WebGLState {
 
     }
 
-    public bindBuffer(bind: number, buffer: WebGLBuffer): void {
+    public bindBuffer(target: number, buffer: WebGLBuffer): void {
 
-        if (bind === this.gl.ARRAY_BUFFER && this.arrayBuffer !== buffer) {
+        if (target === this.gl.ARRAY_BUFFER && this.arrayBuffer !== buffer) {
 
             this.arrayBuffer = buffer;
-            this.gl.bindBuffer(bind, buffer);
+            this.gl.bindBuffer(target, buffer);
+
+            return;
 
         }
 
-        if (bind === this.gl.ELEMENT_ARRAY_BUFFER && this.elementArrayBuffer !== buffer) {
+        if (target === this.gl.ELEMENT_ARRAY_BUFFER && this.elementArrayBuffer !== buffer) {
 
             this.elementArrayBuffer = buffer;
-            this.gl.bindBuffer(bind, buffer);
+            this.gl.bindBuffer(target, buffer);
+
+            return;
 
         }
 

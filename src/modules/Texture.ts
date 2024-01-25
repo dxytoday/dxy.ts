@@ -28,7 +28,7 @@ export class Texture extends EventObject {
 
 export class CubeTexture extends Texture {
 
-    public constructor(public images: TexImage[]) {
+    public constructor(public images?: TexImage[]) {
 
         super();
 

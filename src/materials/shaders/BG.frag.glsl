@@ -6,8 +6,8 @@ precision highp int;
 out vec4 oColor;
 
 uniform bool isCube;
+uniform samplerCube cube;
 uniform sampler2D map;
-// uniform samplerCube cube;
 
 in vec2 vUv;
 in vec3 v_position;
@@ -16,8 +16,7 @@ void main() {
 
     if(isCube) {
 
-        // oColor = texture(cube, normalize(v_position.xyz / v_position.w));
-        oColor = vec4(1, 1, 1, 1);
+        oColor = texture(cube, v_position);
 
     } else {
 

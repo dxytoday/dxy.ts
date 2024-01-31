@@ -27,8 +27,6 @@ export class BGMaterial extends Material {
         this.vertexShader = vertexShader;
         this.fragmentShader = fragmentShader;
 
-        this.depthTest = false;
-
         this.setUniform('map', undefined);
         this.setUniform('cube', undefined);
         this.setUniform('isCube', false);

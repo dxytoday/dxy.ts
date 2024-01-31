@@ -14,6 +14,8 @@ void main() {
 
     vUv = uv;
 
+    float depth = 0.99999f;
+
     if(isCube) {
 
         v_position = normalize(position);
@@ -22,11 +24,11 @@ void main() {
         mvPosition.w = 1.0f;
 
         gl_Position = projectionMatrix * mvPosition;
-        gl_Position.z = gl_Position.w;
+        gl_Position.z = gl_Position.w * depth;
 
     } else {
 
-        gl_Position = vec4(position.xy, 1, 1);
+        gl_Position = vec4(position.xy, depth, 1);
 
     }
 

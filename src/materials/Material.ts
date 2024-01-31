@@ -17,7 +17,7 @@ export abstract class Material extends EventObject {
 
     public transparent = false;
 
-    public depthTest = true;
+    // public depthTest = true;
     public backfaceCulling = true;
 
     public vertexShader = '';

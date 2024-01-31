@@ -8,7 +8,8 @@ import { TRSObject } from "./TRSObject";
 
 class Instances {
 
-    public static readonly v3 = new Vector3();
+    public static readonly v3_1 = new Vector3();
+    public static readonly v3_2 = new Vector3();
     public static readonly m3 = new Matrix3();
     public static readonly m4 = new Matrix4();
     public static readonly sph = new Spherical();
@@ -80,7 +81,8 @@ class Controls {
 
         if (this.camera.viewPoint instanceof TRSObject) {
 
-            return this.camera.viewPoint.position;
+            Instances.v3_2.setFromMatrix4(this.camera.viewPoint.worldMatrix);
+            return Instances.v3_2;
 
         } else {
 
@@ -94,9 +96,9 @@ class Controls {
 
         if (!this.rotateDelta.equalsScalar(0) || this.zoom !== 1) {
 
-            Instances.v3.subVectors(this.position, this.viewPoint);
+            Instances.v3_1.subVectors(this.position, this.viewPoint);
 
-            Instances.sph.setFromVector3(Instances.v3);
+            Instances.sph.setFromVector3(Instances.v3_1);
 
             // 因为是控制相机旋转，为了让物体旋转方向和鼠标移动方向一致所以用减号
             Instances.sph.theta -= this.rotateDelta.x;
@@ -104,10 +106,10 @@ class Controls {
             Instances.sph.makeSafe();
 
             Instances.sph.radius *= this.zoom;
-            Instances.sph.toVector3(Instances.v3);
+            Instances.sph.toVector3(Instances.v3_1);
 
             this.position.copy(this.viewPoint);
-            this.position.add(Instances.v3);
+            this.position.add(Instances.v3_1);
 
             this.rotateDelta.setScalar(0);
             this.zoom = 1;
@@ -183,12 +185,12 @@ class Controls {
             this.panStart.multiplyScalar(2 * edge / this.canvas.height);
 
             // 从相机空间转换到世界空间，-y 是因为像素 ↓ 为正 webgl ↑ 为正
-            Instances.v3.set(this.panStart.x, -this.panStart.y, 0);
+            Instances.v3_1.set(this.panStart.x, -this.panStart.y, 0);
             Instances.m3.setFromMatrix4(this.camera.worldMatrix);
-            Instances.v3.applyMatrix3(Instances.m3);
+            Instances.v3_1.applyMatrix3(Instances.m3);
 
             // 累计计算结果
-            this.panOffset.add(Instances.v3);
+            this.panOffset.add(Instances.v3_1);
 
             this.panStart.copy(this.panEnd);
 

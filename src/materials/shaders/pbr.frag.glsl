@@ -6,7 +6,11 @@ precision highp int;
 out vec4 oColor;
 
 in vec2 vUV;
+in vec3 vNormal;
+in vec3 vPosition;
+
 uniform bool useUV;
+uniform bool useNormal;
 
 uniform vec3 color;
 uniform float opacity;

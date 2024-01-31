@@ -49,9 +49,9 @@ export class Matrix4 {
         this.elements[10] = n33;
         this.elements[11] = n34;
 
-        this.elements[12] = n41;
-        this.elements[13] = n42;
-        this.elements[14] = n43;
+        this.elements[12] = n41; //tx
+        this.elements[13] = n42; //ty
+        this.elements[14] = n43; //tz
         this.elements[15] = n44;
 
         return this;
@@ -323,6 +323,8 @@ export class Matrix4 {
     }
 
     public makeLookAt(eye: Vector3, target: Vector3): Matrix4 {
+
+        /** 基轴组成旋转矩阵 */
 
         Instances.z.subVectors(eye, target);
 

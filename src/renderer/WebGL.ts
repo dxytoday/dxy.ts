@@ -239,7 +239,7 @@ export class WebGL {
         const frontFaceCW = mesh.worldMatrix.determinant() < 0;
         this.state.setFrontFace(frontFaceCW);
 
-        this.state.depthTest(material.depthTest);
+        // this.state.depthTest(material.depthTest);
         this.state.backfaceCulling(material.backfaceCulling);
 
         this.state.resetTextureUnits();

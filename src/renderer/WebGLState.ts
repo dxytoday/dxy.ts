@@ -31,6 +31,8 @@ export class WebGLState {
 
         this.maxTextures = gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS);
 
+        gl.enable(gl.DEPTH_TEST);
+
         // gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
 
         // gl.clearColor(0, 0, 0, 0);
@@ -40,7 +42,6 @@ export class WebGLState {
 
         // gl.pixelStorei(gl.UNPACK_ALIGNMENT, texture.unpackAlignment);
 
-        // gl.enable(gl.DEPTH_TEST);
         // gl.depthMask(true);
 
         // gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);

@@ -63,9 +63,7 @@ export class WebGL {
         const gl = this.gl;
 
         camera.updateMatrix();
-
-        scene.ambientLight.update(camera);
-        scene.directionalLight.update(camera);
+        scene.updateLights(camera);
 
         const renderList: RenderItem[] = [];
         this.projectObject(scene, camera, renderList);

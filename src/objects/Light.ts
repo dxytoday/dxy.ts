@@ -10,15 +10,12 @@ class Instances {
 
 }
 
-export class Light extends TRSObject {
+class Light extends TRSObject {
 
     public readonly lightColor = new Color(1, 1, 1);
     public lightIntensity = 1;
 
-    public target = new Vector3(0, 0, 0);
-
     public readonly color = new Color(1, 1, 1);
-    public readonly direction = new Vector3(0, 1, 0);
 
     public constructor() {
 
@@ -27,16 +24,49 @@ export class Light extends TRSObject {
 
     }
 
-    public update(camera: Camera): void {
+    public update(camera?: Camera): void {
 
         this.color.copy(this.lightColor);
         this.color.multiplyScalar(this.lightIntensity);
+
+    }
+
+}
+
+export class AmbientLight extends Light {
+
+    public constructor() {
+
+        super();
+        this.name = 'ambientLight';
+
+    }
+
+}
+
+export class DirectionalLight extends Light {
+
+    public readonly target = new Vector3(0, 0, 0);
+    public readonly direction = new Vector3(0, 1, 0);
+
+    public constructor() {
+
+        super();
+        this.name = 'directionalLight';
+
+    }
+
+    public override update(camera: Camera): void {
+
+        super.update();
 
         this.direction.copy(this.position);
         this.direction.sub(this.target);
 
         Instances.m3.setFromMatrix4(camera.viewMatrix)
         this.direction.applyMatrix3(Instances.m3);
+
+        this.direction.normalize();
 
     }
 

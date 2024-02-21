@@ -1,15 +1,23 @@
-import { Color } from "../structs/Color";
-import { IUniform, Material } from "./Material";
-import vertexShader from './shaders/PBR.vert.glsl';
-import fragmentShader from './shaders/PBR.frag.glsl';
-import { Texture } from "../modules/Texture";
-import { Mesh } from "../objects/Mesh";
-import { Camera } from "../objects/Camera";
-import { Matrix4 } from "../structs/Matrix4";
-import { Matrix3 } from "../structs/Matrix3";
-import { Scene } from "../objects/Scene";
+import { Color } from "../../structs/Color";
+import { IUniform, Material } from "../Material";
+import vertexShader from './vertex.glsl';
+import fragmentShader from './fragment.glsl';
+import { Texture } from "../../modules/Texture";
+import { Mesh } from "../../objects/Mesh";
+import { Camera } from "../../objects/Camera";
+import { Matrix4 } from "../../structs/Matrix4";
+import { Matrix3 } from "../../structs/Matrix3";
+import { Scene } from "../../objects/Scene";
+import { Vector3 } from "../../structs/Vector3";
 
-type PBRUniforms = {
+type DirectionalLight = {
+
+    color: Color;
+    direction: Vector3;
+
+}
+
+type Uniforms = {
 
     opacity: IUniform<number>;
     color: IUniform<Color>;
@@ -31,12 +39,16 @@ type PBRUniforms = {
 
     useNormal: IUniform<boolean>;
     useUV: IUniform<boolean>;
+    useColor: IUniform<boolean>;
+
+    ambientLightColor: IUniform<Color>;
+    directionalLight: IUniform<DirectionalLight>;
 
 }
 
-export class PBRMaterial extends Material {
+export class PhysMaterial extends Material {
 
-    declare public uniforms: PBRUniforms;
+    declare public uniforms: Uniforms;
 
     public opacity = 1;
     public color = new Color(1, 1, 1);
@@ -82,6 +94,14 @@ export class PBRMaterial extends Material {
 
         this.setUniform('useNormal', false);
         this.setUniform('useUV', false);
+        this.setUniform('useColor', false);
+
+        this.setUniform('ambientLightColor', new Color());
+
+        this.setUniform('directionalLight', {
+            color: new Color(),
+            direction: new Vector3(),
+        });
 
     }
 
@@ -107,6 +127,12 @@ export class PBRMaterial extends Material {
 
         this.uniforms.useNormal.value = mesh.geometry.hasAttribute('normal');
         this.uniforms.useUV.value = mesh.geometry.hasAttribute('uv');
+        this.uniforms.useColor.value = mesh.geometry.hasAttribute('color');
+
+        this.uniforms.ambientLightColor.value.copy(scene.ambientLight.color);
+
+        this.uniforms.directionalLight.value.color.copy(scene.directionalLight.color);
+        this.uniforms.directionalLight.value.direction.copy(scene.directionalLight.direction);
 
     }
 

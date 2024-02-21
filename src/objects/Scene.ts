@@ -1,10 +1,10 @@
-import { BGMaterial } from "../materials/BGMaterial";
-import { Material } from "../materials/Material";
+import { BGMaterial } from "../materials/background/BGMaterial";
 import { Attribute } from "../modules/Attribute";
 import { Geometry } from "../modules/Geometry";
 import { CubeTexture, TexImage, Texture } from "../modules/Texture";
 import { Color } from "../structs/Color";
-import { Light } from "./Light";
+import { Camera } from "./Camera";
+import { DirectionalLight, AmbientLight } from "./Light";
 import { Mesh } from "./Mesh";
 import { TRSObject } from "./TRSObject";
 
@@ -15,16 +15,16 @@ export class Scene extends TRSObject {
 
     public background: undefined | Color | Mesh;
 
-    public readonly ambientLight: Light;
-    public readonly directionalLight: Light;
+    public readonly ambientLight: AmbientLight;
+    public readonly directionalLight: DirectionalLight;
 
     public constructor() {
 
         super();
         this.name = 'scene';
 
-        this.ambientLight = new Light();
-        this.directionalLight = new Light();
+        this.ambientLight = new AmbientLight();
+        this.directionalLight = new DirectionalLight();
 
     }
 
@@ -34,6 +34,13 @@ export class Scene extends TRSObject {
 
         this.ambientLight.updateMatrix();
         this.directionalLight.updateMatrix();
+
+    }
+
+    public updateLights(camera: Camera): void {
+
+        this.ambientLight.update();
+        this.directionalLight.update(camera);
 
     }
 

@@ -1,11 +1,6 @@
 import { GLBLoader } from "./loaders/GLBLoader";
 import { ImageLoader } from "./loaders/ImageLoader";
-import { PBRMaterial } from "./materials/PBRMaterial";
-import { Attribute } from "./modules/Attribute";
-import { Geometry } from "./modules/Geometry";
-import { CubeTexture } from "./modules/Texture";
 import { Camera } from "./objects/Camera";
-import { Mesh } from "./objects/Mesh";
 import { Scene } from "./objects/Scene";
 import { TRSObject } from "./objects/TRSObject";
 import { WebGL } from "./renderer/WebGL";

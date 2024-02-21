@@ -1,13 +1,13 @@
-import { IUniform, Material } from "./Material";
-import vertexShader from './shaders/BG.vert.glsl';
-import fragmentShader from './shaders/BG.frag.glsl';
-import { CubeTexture, Texture } from "../modules/Texture";
-import { Camera } from "../objects/Camera";
-import { Mesh } from "../objects/Mesh";
-import { Scene } from "../objects/Scene";
-import { Matrix4 } from "../structs/Matrix4";
+import { IUniform, Material } from "../Material";
+import vertexShader from './vertex.glsl';
+import fragmentShader from './fragment.glsl';
+import { CubeTexture, Texture } from "../../modules/Texture";
+import { Camera } from "../../objects/Camera";
+import { Mesh } from "../../objects/Mesh";
+import { Scene } from "../../objects/Scene";
+import { Matrix4 } from "../../structs/Matrix4";
 
-type BGRUniforms = {
+type Uniforms = {
 
     map: IUniform<Texture | undefined>;
     cube: IUniform<CubeTexture | undefined>;
@@ -18,7 +18,7 @@ type BGRUniforms = {
 
 export class BGMaterial extends Material {
 
-    declare public uniforms: BGRUniforms;
+    declare public uniforms: Uniforms;
 
     public constructor() {
 

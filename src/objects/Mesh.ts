@@ -3,7 +3,7 @@ import { Matrix3 } from "../structs/Matrix3";
 import { Matrix4 } from "../structs/Matrix4";
 import { Geometry } from "../modules/Geometry";
 import { TRSObject } from "./TRSObject";
-import { PBRMaterial } from "../materials/PBRMaterial";
+import { PhysMaterial } from "../materials/physical/PhysMaterial";
 
 export class Mesh extends TRSObject {
 
@@ -13,7 +13,7 @@ export class Mesh extends TRSObject {
     public constructor(
 
         public geometry = new Geometry(),
-        public material: Material | Material[] = new PBRMaterial(),
+        public material: Material | Material[] = new PhysMaterial(),
 
     ) {
 

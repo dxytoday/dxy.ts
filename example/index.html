@@ -38,25 +38,28 @@
 
 		dxy.setBackground(
 			{
-				// type: 'color',
-				// color: '#ff00ff',
+				type: 'color',
+				color: '#000000',
 
 				// type: 'image',
 				// image: './resources/textures/cube/MilkyWay/nz.jpg',
 
-				type: 'skybox',
-				skybox: './resources/textures/cube/MilkyWay',
+				// type: 'skybox',
+				// skybox: './resources/textures/cube/Park2',
 			}
 		);
 
 		dxy.loadModel(
 			{
 				type: 'glb',
-				url: './resources/models/cube.glb',
+				url: './resources/models/shpere.glb',
 			}
 		);
 
 		dxy.camera.position.set(0, 5, 10);
+
+		dxy.scene.ambientLight.lightIntensity = 0.5;
+		dxy.scene.directionalLight.position.set(0, 0, 1);
 
 		window.dxy = dxy;
 

@@ -1,5 +1,5 @@
 import { Material } from "../materials/Material";
-import { PBRMaterial } from "../materials/PBRMaterial";
+import { PhysMaterial } from "../materials/physical/PhysMaterial";
 import { Attribute, TypedArray } from "../modules/Attribute";
 import { Geometry } from "../modules/Geometry";
 import { Texture } from "../modules/Texture";
@@ -10,7 +10,7 @@ import { WebGLConstants } from "../renderer/WebGLConstants";
 class GLBHelper {
 
     public static readonly textDecoder = new TextDecoder();
-    public static readonly material = new PBRMaterial();
+    public static readonly material = new PhysMaterial();
 
     public static readonly filterMapping = new Map([
 
@@ -597,7 +597,7 @@ class GBL {
 
             }
 
-            const material = new PBRMaterial();
+            const material = new PhysMaterial();
             materialDef.instance = material;
 
             material.name = materialDef.name;

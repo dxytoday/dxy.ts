@@ -136,12 +136,6 @@ export class Vector3 {
 
     }
 
-    public equalsScalar(scalar: number): boolean {
-
-        return scalar === this.x && scalar === this.y && scalar === this.z;
-
-    }
-
     public crossVectors(l: Vector3, r: Vector3): Vector3 {
 
         this.x = l.y * r.z - l.z * r.y;

@@ -73,10 +73,4 @@ export class Vector2 {
 
     }
 
-    public equalsScalar(scalar: number): boolean {
-
-        return scalar === this.x && scalar === this.y;
-
-    }
-
 }

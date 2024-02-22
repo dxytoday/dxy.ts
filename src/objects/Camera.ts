@@ -94,34 +94,25 @@ class Controls {
 
     public update(): void {
 
-        if (!this.rotateDelta.equalsScalar(0) || this.zoom !== 1) {
+        Instances.v3_1.subVectors(this.position, this.viewPoint);
+        Instances.sph.setFromVector3(Instances.v3_1);
 
-            Instances.v3_1.subVectors(this.position, this.viewPoint);
+        // 减号目的在于让物体变换的方向和鼠标移动方向一致
+        Instances.sph.theta -= this.rotateDelta.x;
+        Instances.sph.phi -= this.rotateDelta.y;
+        Instances.sph.makeSafe();
 
-            Instances.sph.setFromVector3(Instances.v3_1);
+        Instances.sph.radius *= this.zoom;
+        Instances.sph.toVector3(Instances.v3_1);
 
-            // 因为是控制相机旋转，为了让物体旋转方向和鼠标移动方向一致所以用减号
-            Instances.sph.theta -= this.rotateDelta.x;
-            Instances.sph.phi -= this.rotateDelta.y;
-            Instances.sph.makeSafe();
+        this.viewPoint.sub(this.panOffset);
 
-            Instances.sph.radius *= this.zoom;
-            Instances.sph.toVector3(Instances.v3_1);
+        this.position.copy(this.viewPoint);
+        this.position.add(Instances.v3_1);
 
-            this.position.copy(this.viewPoint);
-            this.position.add(Instances.v3_1);
-
-            this.rotateDelta.setScalar(0);
-            this.zoom = 1;
-
-        }
-
-        if (!this.panOffset.equalsScalar(0)) {
-
-            this.viewPoint.sub(this.panOffset);
-            this.panOffset.setScalar(0);
-
-        }
+        this.panOffset.setScalar(0);
+        this.rotateDelta.setScalar(0);
+        this.zoom = 1;
 
         Instances.m4.makeLookAt(this.position, this.viewPoint);
         this.rotation.setFromMatrix4(Instances.m4);

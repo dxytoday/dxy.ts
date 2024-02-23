@@ -91,6 +91,7 @@ vec3 BRDF_GGX(const in vec3 L, const in vec3 V, const in vec3 N, const in vec3 f
     float dotVH = saturate(dot(V, H));
 
     vec3 F = F_Schlick(f0, dotVH);
+
     float D = D_GGX(alpha, dotNH);
     float G = V_GGX_SmithCorrelated(alpha, dotNL, dotNV);
 
@@ -106,6 +107,7 @@ vec3 PBR(const in vec3 materialColor) {
 
     float geometryRoughness = max(roughness, 0.0525f);
 
+    // 叠加表面梯度
     vec3 dxy = max(abs(dFdx(N)), abs(dFdy(N)));
     float gradient = max(max(dxy.x, dxy.y), dxy.z);
     geometryRoughness = min(geometryRoughness + gradient, 1.0f);
@@ -116,19 +118,19 @@ vec3 PBR(const in vec3 materialColor) {
     // 材质的镜面反射基础色
     vec3 specularColor = mix(vec3(0.04f), materialColor, metalness);
 
-    // 来自灯光的辐照度
+    // 来自灯光的辐照度 - 直接辐照度
     vec3 lightIrradiance = directionalLight.color * saturate(dot(N, L));
 
-    // 来自灯光的漫反射
+    // 来自灯光的漫反射 - 直接漫反射
     vec3 lightDiffuse = lightIrradiance * BRDF_Lambert(diffuseColor);
 
-    // 来自灯光的镜面反射
+    // 来自灯光的镜面反射 - 直接镜面反射
     vec3 lightSpecular = lightIrradiance * BRDF_GGX(L, V, N, specularColor, geometryRoughness);
 
-    // 来自环境的辐照度 = 环境光 + IBL 
+    // 来自环境的辐照度 = 环境光 + IBL - 间接辐照度
     vec3 ambientIrradiance = ambientLightColor;
 
-    // 来自环境的漫反射
+    // 来自环境的漫反射 - 间接漫反射
     vec3 ambientDiffuse = ambientIrradiance * BRDF_Lambert(diffuseColor);
 
     // 最终颜色 = 直接漫反射 + 直接镜面反射 + 间接漫反射 + 间接镜面反射
@@ -161,6 +163,8 @@ void main() {
         finalColor.rgb *= ambientLightColor;
 
     }
+
+    // linear sRGB 转换到 sRGB
 
     vec3 greater = pow(finalColor.rgb, vec3(0.41666f)) * 1.055f - vec3(0.055f);
     vec3 lessAndEqual = finalColor.rgb * 12.92f;

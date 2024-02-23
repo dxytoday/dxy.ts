@@ -89,6 +89,12 @@ class ColorHelper {
 
     }
 
+    public static SRGBToLinear(c: number): number {
+
+        return (c < 0.04045) ? c * 0.0773993808 : Math.pow(c * 0.9478672986 + 0.0521327014, 2.4);
+
+    }
+
 }
 
 export class Color {
@@ -103,9 +109,9 @@ export class Color {
 
     public set(r: number, g: number, b: number): Color {
 
-        this.r = r;
-        this.g = g;
-        this.b = b;
+        this.r = ColorHelper.SRGBToLinear(r);
+        this.g = ColorHelper.SRGBToLinear(g);
+        this.b = ColorHelper.SRGBToLinear(b);
 
         return this;
 
@@ -115,9 +121,7 @@ export class Color {
 
         const [r, g, b] = ColorHelper.fromStyle(style);
 
-        this.r = r;
-        this.g = g;
-        this.b = b;
+        this.set(r, g, b);
 
         return this;
 
@@ -160,12 +164,6 @@ export class Color {
         target.z = this.b;
 
         return target;
-
-    }
-
-    public equalsVector3(v: Vector3): boolean {
-
-        return this.r === v.x && this.g === v.y && this.b === v.z;
 
     }
 

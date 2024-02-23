@@ -618,17 +618,8 @@ class GBL {
 
             }
 
-            if (pbr.metallicFactor !== undefined) {
-
-                material.metalness = pbr.metallicFactor;
-
-            }
-
-            if (pbr.roughnessFactor !== undefined) {
-
-                material.roughness = pbr.roughnessFactor
-
-            }
+            material.metalness = pbr.metallicFactor !== undefined ? pbr.metallicFactor : 1;
+            material.roughness = pbr.roughnessFactor !== undefined ? pbr.roughnessFactor : 1;
 
             if (pbr.metallicRoughnessTexture !== undefined) {
 

@@ -1,8 +1,5 @@
 #version 300 es
 
-#define RECIPROCAL_PI 0.3183098861837907
-#define EPSILON 1e-6
-
 precision highp float;
 precision highp int;
 
@@ -37,9 +34,105 @@ struct DirectionalLight {
 
 uniform DirectionalLight directionalLight;
 
-float saturate(float a) {
+#define RECIPROCAL_PI 0.3183098861837907
+#define EPSILON 1e-6
 
-    return clamp(a, 0.0f, 1.0f);
+#define saturate( a ) clamp( a, 0.0, 1.0 )
+
+float pow2(const in float x) {
+
+    return x * x;
+
+}
+
+vec3 BRDF_Lambert(const in vec3 diffuseColor) {
+
+    return RECIPROCAL_PI * diffuseColor;
+
+}
+
+vec3 F_Schlick(const in vec3 f0, const in float dotVH) {
+
+    float fresnel = exp2((-5.55473f * dotVH - 6.98316f) * dotVH);
+    return f0 * (1.0f - fresnel) + fresnel;
+
+}
+
+float D_GGX(const in float alpha, const in float dotNH) {
+
+    float a2 = pow2(alpha);
+
+    float denom = pow2(dotNH) * (a2 - 1.0f) + 1.0f;
+
+    return RECIPROCAL_PI * a2 / pow2(denom);
+
+}
+
+float V_GGX_SmithCorrelated(const in float alpha, const in float dotNL, const in float dotNV) {
+
+    float a2 = pow2(alpha);
+
+    float gv = dotNL * sqrt(a2 + (1.0f - a2) * pow2(dotNV));
+    float gl = dotNV * sqrt(a2 + (1.0f - a2) * pow2(dotNL));
+
+    return 0.5f / max(gv + gl, EPSILON);
+
+}
+
+vec3 BRDF_GGX(const in vec3 L, const in vec3 V, const in vec3 N, const in vec3 f0, const in float roughness) {
+
+    float alpha = pow2(roughness);
+
+    vec3 H = normalize(L + V);
+
+    float dotNL = saturate(dot(N, L));
+    float dotNV = saturate(dot(N, V));
+    float dotNH = saturate(dot(N, H));
+    float dotVH = saturate(dot(V, H));
+
+    vec3 F = F_Schlick(f0, dotVH);
+    float D = D_GGX(alpha, dotNH);
+    float G = V_GGX_SmithCorrelated(alpha, dotNL, dotNV);
+
+    return F * (G * D);
+
+}
+
+vec3 PBR(const in vec3 materialColor) {
+
+    vec3 N = normalize(vNormal);
+    vec3 V = normalize(-vPosition);
+    vec3 L = normalize(directionalLight.direction);
+
+    float geometryRoughness = max(roughness, 0.0525f);
+
+    vec3 dxy = max(abs(dFdx(N)), abs(dFdy(N)));
+    float gradient = max(max(dxy.x, dxy.y), dxy.z);
+    geometryRoughness = min(geometryRoughness + gradient, 1.0f);
+
+    // 材质的漫反射基础色
+    vec3 diffuseColor = materialColor * (1.0f - metalness);
+
+    // 材质的镜面反射基础色
+    vec3 specularColor = mix(vec3(0.04f), materialColor, metalness);
+
+    // 来自灯光的辐照度
+    vec3 lightIrradiance = directionalLight.color * saturate(dot(N, L));
+
+    // 来自灯光的漫反射
+    vec3 lightDiffuse = lightIrradiance * BRDF_Lambert(diffuseColor);
+
+    // 来自灯光的镜面反射
+    vec3 lightSpecular = lightIrradiance * BRDF_GGX(L, V, N, specularColor, geometryRoughness);
+
+    // 来自环境的辐照度 = 环境光 + IBL 
+    vec3 ambientIrradiance = ambientLightColor;
+
+    // 来自环境的漫反射
+    vec3 ambientDiffuse = ambientIrradiance * BRDF_Lambert(diffuseColor);
+
+    // 最终颜色 = 直接漫反射 + 直接镜面反射 + 间接漫反射 + 间接镜面反射
+    return lightDiffuse + lightSpecular + ambientDiffuse;
 
 }
 
@@ -61,73 +154,19 @@ void main() {
 
     if(useNormal) {
 
-        // 几何属性
-        vec3 normal = normalize(vNormal);
-        vec3 viewDirection = normalize(-vPosition);
+        finalColor.rgb = PBR(finalColor.rgb);
 
-        float metalnessFactor = metalness;
-        float roughnessFactor = max(roughness, 0.0525f);
+    } else {
 
-        // 叠加梯度到粗糙度
-        vec3 dxy = max(abs(dFdx(normal)), abs(dFdy(normal)));
-        float dRoughness = max(max(dxy.x, dxy.y), dxy.z);
-        roughnessFactor += dRoughness;
-        roughnessFactor = min(roughnessFactor, 1.0f);
-
-        // 只计算非金属部分的漫反射
-        vec3 diffuseColor = finalColor.rgb * (1.0f - metalnessFactor);
-
-        // 金属的镜面反射是自身颜色
-        vec3 specularColor = mix(vec3(0.04f), finalColor.rgb, metalnessFactor);
-
-        // 辐照度
-        float dotNL = saturate(dot(normal, directionalLight.direction));
-        vec3 irradiance = directionalLight.color * dotNL;
-
-        // 镜面反射 - BRDF_GGX
-
-        vec3 specular;
-
-        {
-
-            float alpha = roughnessFactor * roughnessFactor;
-            float a2 = alpha * alpha;
-
-            vec3 halfDir = normalize(directionalLight.direction + viewDirection);
-
-            float dotNV = saturate(dot(normal, viewDirection));
-            float dotNH = saturate(dot(normal, halfDir));
-            float dotVH = saturate(dot(viewDirection, halfDir));
-
-            // F - F_Schlick 菲涅尔项
-            float fresnel = exp2((-5.55473f * dotVH - 6.98316f) * dotVH);
-            vec3 F = specularColor * (1.0f - fresnel) + fresnel;
-
-            // G - V_GGX_SmithCorrelated 几何遮蔽函数
-            float gv = dotNL * sqrt(a2 + (1.0f - a2) * (dotNV * dotNV));
-            float gl = dotNV * sqrt(a2 + (1.0f - a2) * (dotNL * dotNL));
-            float V = 0.5f / max(gv + gl, EPSILON);
-
-            // D - D_GGX 法线分布函数
-            float denom = (dotNH * dotNH) * (a2 - 1.0f) + 1.0f;
-            float D = RECIPROCAL_PI * a2 / (denom * denom);
-
-            specular = irradiance * (F * (V * D));
-
-        }
-
-        // 漫反射 - BRDF_Lambert 
-        vec3 diffuse = irradiance * (RECIPROCAL_PI * diffuseColor);
-
-        // 间接漫反射
-        diffuse += ambientLightColor * (RECIPROCAL_PI * diffuseColor);
-
-        finalColor.rgb = diffuse + specular;
+        finalColor.rgb *= ambientLightColor;
 
     }
 
-    // finalColor.rgb *= ambientLight;
+    vec3 greater = pow(finalColor.rgb, vec3(0.41666f)) * 1.055f - vec3(0.055f);
+    vec3 lessAndEqual = finalColor.rgb * 12.92f;
+    vec3 flag = vec3(lessThanEqual(finalColor.rgb, vec3(0.0031308f)));
 
-    oColor = finalColor;
+    oColor.rgb = mix(greater, lessAndEqual, flag);
+    oColor.a = finalColor.a;
 
 }

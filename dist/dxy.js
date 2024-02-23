@@ -45,6 +45,9 @@ class ColorHelper {
         }
         return result;
     }
+    static SRGBToLinear(c) {
+        return (c < 0.04045) ? c * 0.0773993808 : Math.pow(c * 0.9478672986 + 0.0521327014, 2.4);
+    }
 }
 class Color {
     r;
@@ -56,16 +59,14 @@ class Color {
         this.b = b;
     }
     set(r, g, b) {
-        this.r = r;
-        this.g = g;
-        this.b = b;
+        this.r = ColorHelper.SRGBToLinear(r);
+        this.g = ColorHelper.SRGBToLinear(g);
+        this.b = ColorHelper.SRGBToLinear(b);
         return this;
     }
     setStyle(style) {
         const [r, g, b] = ColorHelper.fromStyle(style);
-        this.r = r;
-        this.g = g;
-        this.b = b;
+        this.set(r, g, b);
         return this;
     }
     copy(color) {
@@ -91,9 +92,6 @@ class Color {
         target.y = this.g;
         target.z = this.b;
         return target;
-    }
-    equalsVector3(v) {
-        return this.r === v.x && this.g === v.y && this.b === v.z;
     }
 }
 
@@ -155,7 +153,7 @@ class Material extends EventObject {
 
 var vertexShader$1 = "#version 300 es\r\n\r\nin vec3 position;\r\nin vec3 normal;\r\nin vec2 uv;\r\nin vec4 color;\r\n\r\nuniform mat3 normalMatrix;\r\nuniform mat4 modelViewMatrix;\r\nuniform mat4 projectionMatrix;\r\n\r\nout vec2 vUV;\r\nout vec3 vNormal;\r\nout vec3 vPosition;\r\nout vec4 vColor;\r\n\r\nvoid main() {\r\n\r\n    vUV = uv;\r\n    vColor = color;\r\n    vNormal = normalMatrix * normal;\r\n    vPosition = (modelViewMatrix * vec4(position, 1)).xyz;\r\n\r\n    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1);\r\n\r\n}";
 
-var fragmentShader$1 = "#version 300 es\r\n\r\n#define RECIPROCAL_PI 0.3183098861837907\r\n#define EPSILON 1e-6\r\n\r\nprecision highp float;\r\nprecision highp int;\r\n\r\nout vec4 oColor;\r\n\r\nin vec2 vUV;\r\nin vec3 vNormal;\r\nin vec3 vPosition;\r\nin vec4 vColor;\r\n\r\nuniform bool useUV;\r\nuniform bool useColor;\r\nuniform bool useNormal;\r\n\r\nuniform vec3 color;\r\nuniform float opacity;\r\n\r\nuniform sampler2D map;\r\nuniform bool useMap;\r\n\r\nuniform float roughness;\r\nuniform float metalness;\r\n\r\nuniform vec3 ambientLightColor;\r\n\r\nstruct DirectionalLight {\r\n\r\n    vec3 color;\r\n    vec3 direction;\r\n\r\n};\r\n\r\nuniform DirectionalLight directionalLight;\r\n\r\nfloat saturate(float a) {\r\n\r\n    return clamp(a, 0.0f, 1.0f);\r\n\r\n}\r\n\r\nvoid main() {\r\n\r\n    vec4 finalColor = vec4(color, opacity);\r\n\r\n    if(useMap && useUV) {\r\n\r\n        finalColor *= texture(map, vUV);\r\n\r\n    }\r\n\r\n    if(useColor) {\r\n\r\n        finalColor *= vColor;\r\n\r\n    }\r\n\r\n    if(useNormal) {\r\n\r\n        // 几何属性\r\n        vec3 normal = normalize(vNormal);\r\n        vec3 viewDirection = normalize(-vPosition);\r\n\r\n        float metalnessFactor = metalness;\r\n        float roughnessFactor = max(roughness, 0.0525f);\r\n\r\n        // 叠加梯度到粗糙度\r\n        vec3 dxy = max(abs(dFdx(normal)), abs(dFdy(normal)));\r\n        float dRoughness = max(max(dxy.x, dxy.y), dxy.z);\r\n        roughnessFactor += dRoughness;\r\n        roughnessFactor = min(roughnessFactor, 1.0f);\r\n\r\n        // 只计算非金属部分的漫反射\r\n        vec3 diffuseColor = finalColor.rgb * (1.0f - metalnessFactor);\r\n\r\n        // 金属的镜面反射是自身颜色\r\n        vec3 specularColor = mix(vec3(0.04f), finalColor.rgb, metalnessFactor);\r\n\r\n        // 辐照度\r\n        float dotNL = saturate(dot(normal, directionalLight.direction));\r\n        vec3 irradiance = directionalLight.color * dotNL;\r\n\r\n        // 镜面反射 - BRDF_GGX\r\n\r\n        vec3 specular;\r\n\r\n        {\r\n\r\n            float alpha = roughnessFactor * roughnessFactor;\r\n            float a2 = alpha * alpha;\r\n\r\n            vec3 halfDir = normalize(directionalLight.direction + viewDirection);\r\n\r\n            float dotNV = saturate(dot(normal, viewDirection));\r\n            float dotNH = saturate(dot(normal, halfDir));\r\n            float dotVH = saturate(dot(viewDirection, halfDir));\r\n\r\n            // F - F_Schlick 菲涅尔项\r\n            float fresnel = exp2((-5.55473f * dotVH - 6.98316f) * dotVH);\r\n            vec3 F = specularColor * (1.0f - fresnel) + fresnel;\r\n\r\n            // G - V_GGX_SmithCorrelated 几何遮蔽函数\r\n            float gv = dotNL * sqrt(a2 + (1.0f - a2) * (dotNV * dotNV));\r\n            float gl = dotNV * sqrt(a2 + (1.0f - a2) * (dotNL * dotNL));\r\n            float V = 0.5f / max(gv + gl, EPSILON);\r\n\r\n            // D - D_GGX 法线分布函数\r\n            float denom = (dotNH * dotNH) * (a2 - 1.0f) + 1.0f;\r\n            float D = RECIPROCAL_PI * a2 / (denom * denom);\r\n\r\n            specular = irradiance * (F * (V * D));\r\n\r\n        }\r\n\r\n        // 漫反射 - BRDF_Lambert \r\n        vec3 diffuse = irradiance * (RECIPROCAL_PI * diffuseColor);\r\n\r\n        // 间接漫反射\r\n        diffuse += ambientLightColor * (RECIPROCAL_PI * diffuseColor);\r\n\r\n        finalColor.rgb = diffuse + specular;\r\n\r\n    }\r\n\r\n    // finalColor.rgb *= ambientLight;\r\n\r\n    oColor = finalColor;\r\n\r\n}";
+var fragmentShader$1 = "#version 300 es\r\n\r\nprecision highp float;\r\nprecision highp int;\r\n\r\nout vec4 oColor;\r\n\r\nin vec2 vUV;\r\nin vec3 vNormal;\r\nin vec3 vPosition;\r\nin vec4 vColor;\r\n\r\nuniform bool useUV;\r\nuniform bool useColor;\r\nuniform bool useNormal;\r\n\r\nuniform vec3 color;\r\nuniform float opacity;\r\n\r\nuniform sampler2D map;\r\nuniform bool useMap;\r\n\r\nuniform float roughness;\r\nuniform float metalness;\r\n\r\nuniform vec3 ambientLightColor;\r\n\r\nstruct DirectionalLight {\r\n\r\n    vec3 color;\r\n    vec3 direction;\r\n\r\n};\r\n\r\nuniform DirectionalLight directionalLight;\r\n\r\n#define RECIPROCAL_PI 0.3183098861837907\r\n#define EPSILON 1e-6\r\n\r\n#define saturate( a ) clamp( a, 0.0, 1.0 )\r\n\r\nfloat pow2(const in float x) {\r\n\r\n    return x * x;\r\n\r\n}\r\n\r\nvec3 BRDF_Lambert(const in vec3 diffuseColor) {\r\n\r\n    return RECIPROCAL_PI * diffuseColor;\r\n\r\n}\r\n\r\nvec3 F_Schlick(const in vec3 f0, const in float dotVH) {\r\n\r\n    float fresnel = exp2((-5.55473f * dotVH - 6.98316f) * dotVH);\r\n    return f0 * (1.0f - fresnel) + fresnel;\r\n\r\n}\r\n\r\nfloat D_GGX(const in float alpha, const in float dotNH) {\r\n\r\n    float a2 = pow2(alpha);\r\n\r\n    float denom = pow2(dotNH) * (a2 - 1.0f) + 1.0f;\r\n\r\n    return RECIPROCAL_PI * a2 / pow2(denom);\r\n\r\n}\r\n\r\nfloat V_GGX_SmithCorrelated(const in float alpha, const in float dotNL, const in float dotNV) {\r\n\r\n    float a2 = pow2(alpha);\r\n\r\n    float gv = dotNL * sqrt(a2 + (1.0f - a2) * pow2(dotNV));\r\n    float gl = dotNV * sqrt(a2 + (1.0f - a2) * pow2(dotNL));\r\n\r\n    return 0.5f / max(gv + gl, EPSILON);\r\n\r\n}\r\n\r\nvec3 BRDF_GGX(const in vec3 L, const in vec3 V, const in vec3 N, const in vec3 f0, const in float roughness) {\r\n\r\n    float alpha = pow2(roughness);\r\n\r\n    vec3 H = normalize(L + V);\r\n\r\n    float dotNL = saturate(dot(N, L));\r\n    float dotNV = saturate(dot(N, V));\r\n    float dotNH = saturate(dot(N, H));\r\n    float dotVH = saturate(dot(V, H));\r\n\r\n    vec3 F = F_Schlick(f0, dotVH);\r\n    float D = D_GGX(alpha, dotNH);\r\n    float G = V_GGX_SmithCorrelated(alpha, dotNL, dotNV);\r\n\r\n    return F * (G * D);\r\n\r\n}\r\n\r\nvec3 PBR(const in vec3 materialColor) {\r\n\r\n    vec3 N = normalize(vNormal);\r\n    vec3 V = normalize(-vPosition);\r\n    vec3 L = normalize(directionalLight.direction);\r\n\r\n    float geometryRoughness = max(roughness, 0.0525f);\r\n\r\n    vec3 dxy = max(abs(dFdx(N)), abs(dFdy(N)));\r\n    float gradient = max(max(dxy.x, dxy.y), dxy.z);\r\n    geometryRoughness = min(geometryRoughness + gradient, 1.0f);\r\n\r\n    // 材质的漫反射基础色\r\n    vec3 diffuseColor = materialColor * (1.0f - metalness);\r\n\r\n    // 材质的镜面反射基础色\r\n    vec3 specularColor = mix(vec3(0.04f), materialColor, metalness);\r\n\r\n    // 来自灯光的辐照度\r\n    vec3 lightIrradiance = directionalLight.color * saturate(dot(N, L));\r\n\r\n    // 来自灯光的漫反射\r\n    vec3 lightDiffuse = lightIrradiance * BRDF_Lambert(diffuseColor);\r\n\r\n    // 来自灯光的镜面反射\r\n    vec3 lightSpecular = lightIrradiance * BRDF_GGX(L, V, N, specularColor, geometryRoughness);\r\n\r\n    // 来自环境的辐照度 = 环境光 + IBL \r\n    vec3 ambientIrradiance = ambientLightColor;\r\n\r\n    // 来自环境的漫反射\r\n    vec3 ambientDiffuse = ambientIrradiance * BRDF_Lambert(diffuseColor);\r\n\r\n    // 最终颜色 = 直接漫反射 + 直接镜面反射 + 间接漫反射 + 间接镜面反射\r\n    return lightDiffuse + lightSpecular + ambientDiffuse;\r\n\r\n}\r\n\r\nvoid main() {\r\n\r\n    vec4 finalColor = vec4(color, opacity);\r\n\r\n    if(useMap && useUV) {\r\n\r\n        finalColor *= texture(map, vUV);\r\n\r\n    }\r\n\r\n    if(useColor) {\r\n\r\n        finalColor *= vColor;\r\n\r\n    }\r\n\r\n    if(useNormal) {\r\n\r\n        finalColor.rgb = PBR(finalColor.rgb);\r\n\r\n    } else {\r\n\r\n        finalColor.rgb *= ambientLightColor;\r\n\r\n    }\r\n\r\n    vec3 greater = pow(finalColor.rgb, vec3(0.41666f)) * 1.055f - vec3(0.055f);\r\n    vec3 lessAndEqual = finalColor.rgb * 12.92f;\r\n    vec3 flag = vec3(lessThanEqual(finalColor.rgb, vec3(0.0031308f)));\r\n\r\n    oColor.rgb = mix(greater, lessAndEqual, flag);\r\n    oColor.a = finalColor.a;\r\n\r\n}\r\n";
 
 class Vector3 {
     x;
@@ -240,9 +238,6 @@ class Vector3 {
     }
     equals(v) {
         return v.x === this.x && v.y === this.y && v.z === this.z;
-    }
-    equalsScalar(scalar) {
-        return scalar === this.x && scalar === this.y && scalar === this.z;
     }
     crossVectors(l, r) {
         this.x = l.y * r.z - l.z * r.y;
@@ -1270,12 +1265,8 @@ class GBL {
                 const texture = await this.loadTexture(pbr.baseColorTexture.index);
                 material.map = texture;
             }
-            if (pbr.metallicFactor !== undefined) {
-                material.metalness = pbr.metallicFactor;
-            }
-            if (pbr.roughnessFactor !== undefined) {
-                material.roughness = pbr.roughnessFactor;
-            }
+            material.metalness = pbr.metallicFactor !== undefined ? pbr.metallicFactor : 1;
+            material.roughness = pbr.roughnessFactor !== undefined ? pbr.roughnessFactor : 1;
             if (pbr.metallicRoughnessTexture !== undefined) {
                 const texture = await this.loadTexture(pbr.metallicRoughnessTexture.index);
                 material.metalnessMap = texture;
@@ -1441,9 +1432,6 @@ class Vector2 {
     }
     equals(v) {
         return v.x === this.x && v.y === this.y;
-    }
-    equalsScalar(scalar) {
-        return scalar === this.x && scalar === this.y;
     }
 }
 
@@ -2099,7 +2087,10 @@ class FVector3Uniform extends WebGLUniform {
             this.current.copy(value);
             this.safeSet();
         }
-        if (value instanceof Color && !value.equalsVector3(this.current)) {
+        if (value instanceof Color &&
+            (value.r !== this.current.x ||
+                value.g !== this.current.y ||
+                value.b !== this.current.z)) {
             value.toVector3(this.current);
             this.safeSet();
         }

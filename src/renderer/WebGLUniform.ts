@@ -524,7 +524,17 @@ class FVector3Uniform extends WebGLUniform<Vector3> {
 
         }
 
-        if (value instanceof Color && !value.equalsVector3(this.current)) {
+        if (
+
+            value instanceof Color &&
+
+            (
+                value.r !== this.current.x ||
+                value.g !== this.current.y ||
+                value.b !== this.current.z
+            )
+
+        ) {
 
             value.toVector3(this.current);
             this.safeSet();

@@ -79,6 +79,7 @@ float V_GGX_SmithCorrelated(const in float alpha, const in float dotNL, const in
 
 }
 
+// 使用 GGX 函数，金属高光有更真实的拖尾效果
 vec3 BRDF_GGX(const in vec3 L, const in vec3 V, const in vec3 N, const in vec3 f0, const in float roughness) {
 
     float alpha = pow2(roughness);
@@ -118,23 +119,23 @@ vec3 PBR(const in vec3 materialColor) {
     // 材质的镜面反射基础色
     vec3 specularColor = mix(vec3(0.04f), materialColor, metalness);
 
-    // 来自灯光的辐照度 - 直接辐照度
-    vec3 lightIrradiance = directionalLight.color * saturate(dot(N, L));
+    // 直接辐照度，来自灯光的辐照度
+    vec3 directIrradiance = directionalLight.color * saturate(dot(N, L));
 
-    // 来自灯光的漫反射 - 直接漫反射
-    vec3 lightDiffuse = lightIrradiance * BRDF_Lambert(diffuseColor);
+    // 直接漫反射，来自灯光的漫反射，注意：BRDF 函数使用 GGX 版本，漫反射项忽略 Kd 系数
+    vec3 directDiffuse = directIrradiance * BRDF_Lambert(diffuseColor);
 
-    // 来自灯光的镜面反射 - 直接镜面反射
-    vec3 lightSpecular = lightIrradiance * BRDF_GGX(L, V, N, specularColor, geometryRoughness);
+    // 直接镜面反射，来自灯光的镜面反射
+    vec3 directSpecular = directIrradiance * BRDF_GGX(L, V, N, specularColor, geometryRoughness);
 
-    // 来自环境的辐照度 = 环境光 + IBL - 间接辐照度
-    vec3 ambientIrradiance = ambientLightColor;
+    // 间接辐照度，来自环境的辐照度 = 环境光 + IBL
+    vec3 indirectIrradiance = ambientLightColor;
 
-    // 来自环境的漫反射 - 间接漫反射
-    vec3 ambientDiffuse = ambientIrradiance * BRDF_Lambert(diffuseColor);
+    // 间接漫反射，来自环境的漫反射
+    vec3 indirectDiffuse = indirectIrradiance * BRDF_Lambert(diffuseColor);
 
     // 最终颜色 = 直接漫反射 + 直接镜面反射 + 间接漫反射 + 间接镜面反射
-    return lightDiffuse + lightSpecular + ambientDiffuse;
+    return directDiffuse + directSpecular + indirectDiffuse;
 
 }
 

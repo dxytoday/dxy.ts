@@ -81,7 +81,7 @@ class Controls {
 
         if (this.camera.viewPoint instanceof TRSObject) {
 
-            Instances.v3_2.setFromMatrix4(this.camera.viewPoint.worldMatrix);
+            Instances.v3_2.setFromMatrix4(this.camera.viewPoint.modelMatrix);
             return Instances.v3_2;
 
         } else {
@@ -177,7 +177,7 @@ class Controls {
 
             // 从相机空间转换到世界空间，-y 是因为像素 ↓ 为正 webgl ↑ 为正
             Instances.v3_1.set(this.panStart.x, -this.panStart.y, 0);
-            Instances.m3.setFromMatrix4(this.camera.worldMatrix);
+            Instances.m3.setFromMatrix4(this.camera.modelMatrix);
             Instances.v3_1.applyMatrix3(Instances.m3);
 
             // 累计计算结果
@@ -246,7 +246,7 @@ export class Camera extends TRSObject {
         this.controls.update();
 
         super.updateMatrix(updateParents, updateChildren);
-        this.viewMatrix.copy(this.worldMatrix).invert();
+        this.viewMatrix.copy(this.modelMatrix).invert();
 
     }
 

@@ -11,8 +11,8 @@ export class TRSObject extends EventObject {
     public readonly rotation = new Quaternion(0, 0, 0, 1);
     public readonly scale = new Vector3(1, 1, 1);
 
-    public readonly localMatrix = new Matrix4();
-    public readonly worldMatrix = new Matrix4();
+    public readonly matrix = new Matrix4();
+    public readonly modelMatrix = new Matrix4();
 
     public parent: TRSObject | undefined;
     public readonly children: TRSObject[] = [];
@@ -27,12 +27,12 @@ export class TRSObject extends EventObject {
 
         }
 
-        this.localMatrix.compose(this.position, this.rotation, this.scale);
-        this.worldMatrix.copy(this.localMatrix);
+        this.matrix.compose(this.position, this.rotation, this.scale);
+        this.modelMatrix.copy(this.matrix);
 
         if (this.parent) {
 
-            this.worldMatrix.multiply(this.parent.worldMatrix);
+            this.modelMatrix.multiply(this.parent.modelMatrix);
 
         }
 

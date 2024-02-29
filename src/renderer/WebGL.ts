@@ -234,7 +234,7 @@ export class WebGL {
 
         material.onBeforRender(scene, mesh, camera);
 
-        const frontFaceCW = mesh.worldMatrix.determinant() < 0;
+        const frontFaceCW = mesh.modelMatrix.determinant() < 0;
         this.state.setFrontFace(frontFaceCW);
 
         // this.state.depthTest(material.depthTest);

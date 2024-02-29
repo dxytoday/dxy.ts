@@ -23,7 +23,7 @@ export class Mesh extends TRSObject {
 
     public updateModelViewMatrix(viewMatrix: Matrix4): void {
 
-        this.modelViewMatrix.multiplyMatrices(this.worldMatrix, viewMatrix);
+        this.modelViewMatrix.multiplyMatrices(this.modelMatrix, viewMatrix);
         this.normalMatrix.makeNormalMatrix(this.modelViewMatrix);
 
     }

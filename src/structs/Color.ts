@@ -1,6 +1,6 @@
 import { Vector3 } from "./Vector3";
 
-class ColorHelper {
+class Helper {
 
     public static fromStyle(style: string): number[] {
 
@@ -8,13 +8,13 @@ class ColorHelper {
 
         if (execArray = /^(\w+)\(([^\)]*)\)/.exec(style)) {
 
-            return ColorHelper.fromRGB(execArray);
+            return Helper.fromRGB(execArray);
 
         }
 
         if (execArray = /^\#([A-Fa-f\d]+)$/.exec(style)) {
 
-            return ColorHelper.fromHex(execArray);
+            return Helper.fromHex(execArray);
 
         }
 
@@ -109,9 +109,9 @@ export class Color {
 
     public set(r: number, g: number, b: number): Color {
 
-        this.r = ColorHelper.SRGBToLinear(r);
-        this.g = ColorHelper.SRGBToLinear(g);
-        this.b = ColorHelper.SRGBToLinear(b);
+        this.r = Helper.SRGBToLinear(r);
+        this.g = Helper.SRGBToLinear(g);
+        this.b = Helper.SRGBToLinear(b);
 
         return this;
 
@@ -119,7 +119,7 @@ export class Color {
 
     public setStyle(style: string): Color {
 
-        const [r, g, b] = ColorHelper.fromStyle(style);
+        const [r, g, b] = Helper.fromStyle(style);
 
         this.set(r, g, b);
 

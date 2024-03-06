@@ -1,8 +1,8 @@
 import { Vector3 } from "./Vector3";
 
-const EPS = 0.000001;
-
 export class Spherical {
+
+    private static readonly EPS = 0.000001;
 
     public constructor(
 
@@ -50,7 +50,7 @@ export class Spherical {
 
     public makeSafe(): Spherical {
 
-        this.phi = Math.max(EPS, Math.min(this.phi, Math.PI - EPS));
+        this.phi = Math.max(Spherical.EPS, Math.min(this.phi, Math.PI - Spherical.EPS));
 
         return this;
 

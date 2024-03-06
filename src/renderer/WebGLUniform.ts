@@ -5,7 +5,7 @@ import { Vector2 } from "../structs/Vector2";
 import { Vector3 } from "../structs/Vector3";
 import { Vector4 } from "../structs/Vector4";
 
-class WebGLUniformHelper {
+class Helper {
 
     public static toUniforms(
 
@@ -16,7 +16,7 @@ class WebGLUniformHelper {
 
     ): void {
 
-        WebGLUniformHelper.createUniform(gl, info, location, info.name, uniforms);
+        Helper.createUniform(gl, info, location, info.name, uniforms);
 
     }
 
@@ -41,19 +41,19 @@ class WebGLUniformHelper {
 
         ) {
 
-            WebGLUniformHelper.createArrayStruct(gl, info, location, path, uniforms);
+            Helper.createArrayStruct(gl, info, location, path, uniforms);
 
         } else if (dotIndex !== -1) {
 
-            WebGLUniformHelper.createStruct(gl, info, location, path, uniforms);
+            Helper.createStruct(gl, info, location, path, uniforms);
 
         } else if (braIndex !== -1) {
 
-            WebGLUniformHelper.createArray(gl, info, location, path, uniforms);
+            Helper.createArray(gl, info, location, path, uniforms);
 
         } else {
 
-            WebGLUniformHelper.createSingle(gl, info, location, path, uniforms);
+            Helper.createSingle(gl, info, location, path, uniforms);
 
         }
 
@@ -207,7 +207,7 @@ class WebGLUniformHelper {
         }
 
         name = name.substring(dotIndex + 1);
-        WebGLUniformHelper.createUniform(gl, info, location, name, struct.uniforms);
+        Helper.createUniform(gl, info, location, name, struct.uniforms);
 
     }
 
@@ -249,7 +249,7 @@ class WebGLUniformHelper {
         }
 
         path = path.substring(RSBI + 2);
-        WebGLUniformHelper.createSingle(gl, info, location, path, struct.uniforms);
+        Helper.createSingle(gl, info, location, path, struct.uniforms);
 
     }
 
@@ -278,7 +278,7 @@ export abstract class WebGLUniform<T = any> {
 
     ): WebGLUniform[] {
 
-        WebGLUniformHelper.toUniforms(gl, info, location, uniforms);
+        Helper.toUniforms(gl, info, location, uniforms);
         return uniforms;
 
     }

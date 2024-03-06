@@ -1,3 +1,6 @@
+import { Box3 } from "../structs/Box3";
+import { Sphere } from "../structs/Sphere";
+import { Vector3 } from "../structs/Vector3";
 import { Attribute } from "./Attribute";
 import { EventObject } from "./EventObject";
 
@@ -9,7 +12,10 @@ export type RenderGroup = {
 
 }
 
-class GeometryHelper {
+class Helper {
+
+    public static readonly vector3 = new Vector3();
+    public static readonly box3 = new Box3();
 
     public static arrayNeedsUint32(array: number[]): boolean {
 
@@ -32,6 +38,7 @@ class GeometryHelper {
 export class Geometry extends EventObject {
 
     public readonly attributes: { [key: string]: Attribute; } = {};
+    public readonly boundingSphere = new Sphere();
     public readonly groups: RenderGroup[] = [];
 
     public indices: Attribute | undefined;
@@ -44,7 +51,7 @@ export class Geometry extends EventObject {
 
     public setIndices(array: number[]): void {
 
-        if (GeometryHelper.arrayNeedsUint32(array)) {
+        if (Helper.arrayNeedsUint32(array)) {
 
             this.indices = new Attribute(new Uint32Array(array), 1);
 
@@ -90,6 +97,32 @@ export class Geometry extends EventObject {
         );
 
         return this;
+
+    }
+
+    public computeBoundingSphere(): void {
+
+        if (!this.position) {
+
+            return;
+
+        }
+
+        const center = this.boundingSphere.center;
+
+        Helper.box3.setFromBufferAttribute(this.position);
+        Helper.box3.getCenter(center);
+
+        let maxRadiusSq = -1;
+
+        for (let ii = 0, il = this.position.count; ii < il; ii++) {
+
+            this.position.toVector3(ii, Helper.vector3);
+            maxRadiusSq = Math.max(maxRadiusSq, center.distanceToSq(Helper.vector3));
+
+        }
+
+        this.boundingSphere.radius = Math.sqrt(maxRadiusSq);
 
     }
 

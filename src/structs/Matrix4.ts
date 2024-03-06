@@ -1,16 +1,13 @@
 import { Quaternion } from "./Quaternion";
 import { Vector3 } from "./Vector3";
 
-class Instances {
-
-    public static readonly up = new Vector3(0, 1, 0);
-    public static readonly x = new Vector3(0, 1, 0);
-    public static readonly y = new Vector3(0, 1, 0);
-    public static readonly z = new Vector3(0, 1, 0);
-
-}
-
 export class Matrix4 {
+
+    private static readonly up = new Vector3(0, 1, 0);
+    private static readonly scale = new Vector3();
+    private static readonly xAxis = new Vector3();
+    private static readonly yAxis = new Vector3();
+    private static readonly zAxis = new Vector3();
 
     public constructor(
 
@@ -108,9 +105,9 @@ export class Matrix4 {
 
         /** 
          * 
-         * 在四元数旋转矩阵的基础上
-         * 再叠加缩放值到对应元素中
-         * 再设置平移值到对应元素中
+         *      在四元数旋转矩阵的基础上
+         *      再叠加缩放值到对应元素中
+         *      再设置平移值到对应元素中
          * 
          */
 
@@ -167,13 +164,13 @@ export class Matrix4 {
 
         /**
          *
-         * 经典伴随矩阵求逆
+         *      经典伴随矩阵求逆
          *
-         * 先计算所有元素的余子式值
-         * 然后余子式值组成的矩阵再转置
-         * 再除以矩阵的行列式的值
+         *      先计算所有元素的余子式值
+         *      然后余子式值组成的矩阵再转置
+         *      再除以矩阵的行列式的值
          *
-         * 注意：以扩展形式的矩阵行列式求值
+         *      注意：以扩展形式的矩阵行列式求值
          *
          */
 
@@ -289,17 +286,111 @@ export class Matrix4 {
 
     }
 
+    public extractPosition(target: Vector3): Vector3 {
+
+        target.x = this.elements[12];
+        target.y = this.elements[13];
+        target.z = this.elements[14];
+
+        return target;
+
+    }
+
+    public extractRotation(target: Quaternion): Quaternion {
+
+        const me = this.elements.slice();
+
+        this.extractScale(Matrix4.scale);
+
+        me[0] /= Matrix4.scale.x;
+        me[1] /= Matrix4.scale.x;
+        me[2] /= Matrix4.scale.x;
+
+        me[4] /= Matrix4.scale.y;
+        me[5] /= Matrix4.scale.y;
+        me[6] /= Matrix4.scale.y;
+
+        me[8] /= Matrix4.scale.z;
+        me[9] /= Matrix4.scale.z;
+        me[10] /= Matrix4.scale.z;
+
+        const trace = me[0] + me[5] + me[10];
+
+        if (trace > 0) {
+
+            const s = 0.5 / Math.sqrt(trace + 1.0);
+
+            target.w = 0.25 / s;
+            target.x = (me[6] - me[9]) * s;
+            target.y = (me[8] - me[2]) * s;
+            target.z = (me[1] - me[4]) * s;
+
+        } else if (me[0] > me[5] && me[0] > me[10]) {
+
+            const s = 2.0 * Math.sqrt(1.0 + me[0] - me[5] - me[10]);
+
+            target.w = (me[6] - me[9]) / s;
+            target.x = 0.25 * s;
+            target.y = (me[4] + me[1]) / s;
+            target.z = (me[8] + me[2]) / s;
+
+        } else if (me[5] > me[10]) {
+
+            const s = 2.0 * Math.sqrt(1.0 + me[5] - me[0] - me[10]);
+
+            target.w = (me[8] - me[2]) / s;
+            target.x = (me[4] + me[1]) / s;
+            target.y = 0.25 * s;
+            target.z = (me[9] + me[6]) / s;
+
+        } else {
+
+            const s = 2.0 * Math.sqrt(1.0 + me[10] - me[0] - me[5]);
+
+            target.w = (me[1] - me[4]) / s;
+            target.x = (me[8] + me[2]) / s;
+            target.y = (me[9] + me[6]) / s;
+            target.z = 0.25 * s;
+
+        }
+
+        return target;
+
+    }
+
+    public extractScale(target: Vector3): Vector3 {
+
+        this.extractBasis(Matrix4.xAxis, Matrix4.yAxis, Matrix4.zAxis);
+
+        target.x = Matrix4.xAxis.length();
+        target.y = Matrix4.yAxis.length();
+        target.z = Matrix4.zAxis.length();
+
+        return target;
+
+    }
+
+    public extractBasis(xAxis: Vector3, yAxis: Vector3, zAxis: Vector3): Matrix4 {
+
+        xAxis.setFromArray(this.elements, 0);
+        yAxis.setFromArray(this.elements, 4);
+        zAxis.setFromArray(this.elements, 8);
+
+        return this;
+
+    }
+
     public makePerspective(left: number, right: number, top: number, bottom: number, near: number, far: number): Matrix4 {
 
         /**
          * 
-         * 计算透视投影矩阵
+         *      计算透视投影矩阵
+         *
+         *      先将平头锥体计算为正方体
+         *      使用 near 范围的 left, right, top, bottom
+         *      计算线性到 far 范围内的 xy 平面上的缩放
          * 
-         * 先将平头锥体计算为正方体
-         * 		使用 near 范围的 left, right, top, bottom
-         * 		计算线性到 far 范围内的 xy 平面上的缩放
-         * 
-         * 再将正方体缩放到 -1 到 1 范围内
+         *      再将正方体缩放到 -1 到 1 范围内
          * 
          */
 
@@ -326,40 +417,40 @@ export class Matrix4 {
 
         /** 基轴组成旋转矩阵 */
 
-        Instances.z.subVectors(eye, target);
+        Matrix4.zAxis.subVectors(eye, target);
 
-        if (!Instances.z.length()) {
+        if (!Matrix4.zAxis.length()) {
 
-            Instances.z.z = 1;
-
-        }
-
-        Instances.z.normalize();
-        Instances.x.crossVectors(Instances.up, Instances.z);
-
-        if (!Instances.x.lengthSq()) {
-
-            Instances.z.z += 0.0001;
-
-            Instances.z.normalize();
-            Instances.x.crossVectors(Instances.up, Instances.z);
+            Matrix4.zAxis.z = 1;
 
         }
 
-        Instances.x.normalize();
-        Instances.y.crossVectors(Instances.z, Instances.x);
+        Matrix4.zAxis.normalize();
+        Matrix4.xAxis.crossVectors(Matrix4.up, Matrix4.zAxis);
 
-        this.elements[0] = Instances.x.x;
-        this.elements[1] = Instances.x.y;
-        this.elements[2] = Instances.x.z;
+        if (!Matrix4.xAxis.lengthSq()) {
 
-        this.elements[4] = Instances.y.x;
-        this.elements[5] = Instances.y.y;
-        this.elements[6] = Instances.y.z;
+            Matrix4.zAxis.z += 0.0001;
 
-        this.elements[8] = Instances.z.x;
-        this.elements[9] = Instances.z.y;
-        this.elements[10] = Instances.z.z;
+            Matrix4.zAxis.normalize();
+            Matrix4.xAxis.crossVectors(Matrix4.up, Matrix4.zAxis);
+
+        }
+
+        Matrix4.xAxis.normalize();
+        Matrix4.yAxis.crossVectors(Matrix4.zAxis, Matrix4.xAxis);
+
+        this.elements[0] = Matrix4.xAxis.x;
+        this.elements[1] = Matrix4.xAxis.y;
+        this.elements[2] = Matrix4.xAxis.z;
+
+        this.elements[4] = Matrix4.yAxis.x;
+        this.elements[5] = Matrix4.yAxis.y;
+        this.elements[6] = Matrix4.yAxis.z;
+
+        this.elements[8] = Matrix4.zAxis.x;
+        this.elements[9] = Matrix4.zAxis.y;
+        this.elements[10] = Matrix4.zAxis.z;
 
         return this;
 

@@ -12,37 +12,21 @@ export class TRSObject extends EventObject {
     public readonly scale = new Vector3(1, 1, 1);
 
     public readonly matrix = new Matrix4();
-    public readonly modelMatrix = new Matrix4();
+    public readonly worldMatrix = new Matrix4();
 
     public parent: TRSObject | undefined;
     public readonly children: TRSObject[] = [];
 
     public visible = true;
 
-    public updateMatrix(updateParents?: boolean, updateChildren?: boolean): void {
-
-        if (updateParents && this.parent) {
-
-            this.parent.updateMatrix(true, false);
-
-        }
+    public updateMatrix(): void {
 
         this.matrix.compose(this.position, this.rotation, this.scale);
-        this.modelMatrix.copy(this.matrix);
+        this.worldMatrix.copy(this.matrix);
 
         if (this.parent) {
 
-            this.modelMatrix.multiply(this.parent.modelMatrix);
-
-        }
-
-        if (updateChildren) {
-
-            for (const child of this.children) {
-
-                child.updateMatrix(false, true);
-
-            }
+            this.worldMatrix.multiply(this.parent.worldMatrix);
 
         }
 

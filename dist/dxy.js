@@ -153,7 +153,7 @@ class Material extends EventObject {
 
 var vertexShader$1 = "#version 300 es\r\n\r\nin vec3 position;\r\nin vec3 normal;\r\nin vec2 uv;\r\nin vec4 color;\r\n\r\nuniform mat3 normalMatrix;\r\nuniform mat4 modelViewMatrix;\r\nuniform mat4 projectionMatrix;\r\n\r\nout vec2 vUV;\r\nout vec3 vNormal;\r\nout vec3 vPosition;\r\nout vec4 vColor;\r\n\r\nvoid main() {\r\n\r\n    vUV = uv;\r\n    vColor = color;\r\n    vNormal = normalMatrix * normal;\r\n    vPosition = (modelViewMatrix * vec4(position, 1)).xyz;\r\n\r\n    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1);\r\n\r\n}";
 
-var fragmentShader$1 = "#version 300 es\r\n\r\nprecision highp float;\r\nprecision highp int;\r\n\r\nout vec4 oColor;\r\n\r\nin vec2 vUV;\r\nin vec3 vNormal;\r\nin vec3 vPosition;\r\nin vec4 vColor;\r\n\r\nuniform bool useUV;\r\nuniform bool useColor;\r\nuniform bool useNormal;\r\n\r\nuniform vec3 color;\r\nuniform float opacity;\r\n\r\nuniform sampler2D map;\r\nuniform bool useMap;\r\n\r\nuniform float roughness;\r\nuniform float metalness;\r\n\r\nuniform vec3 ambientLightColor;\r\n\r\nstruct DirectionalLight {\r\n\r\n    vec3 color;\r\n    vec3 direction;\r\n\r\n};\r\n\r\nuniform DirectionalLight directionalLight;\r\n\r\n#define RECIPROCAL_PI 0.3183098861837907\r\n#define EPSILON 1e-6\r\n\r\n#define saturate( a ) clamp( a, 0.0, 1.0 )\r\n\r\nfloat pow2(const in float x) {\r\n\r\n    return x * x;\r\n\r\n}\r\n\r\nvec3 BRDF_Lambert(const in vec3 diffuseColor) {\r\n\r\n    return RECIPROCAL_PI * diffuseColor;\r\n\r\n}\r\n\r\nvec3 F_Schlick(const in vec3 f0, const in float dotVH) {\r\n\r\n    float fresnel = exp2((-5.55473f * dotVH - 6.98316f) * dotVH);\r\n    return f0 * (1.0f - fresnel) + fresnel;\r\n\r\n}\r\n\r\nfloat D_GGX(const in float alpha, const in float dotNH) {\r\n\r\n    float a2 = pow2(alpha);\r\n\r\n    float denom = pow2(dotNH) * (a2 - 1.0f) + 1.0f;\r\n\r\n    return RECIPROCAL_PI * a2 / pow2(denom);\r\n\r\n}\r\n\r\nfloat V_GGX_SmithCorrelated(const in float alpha, const in float dotNL, const in float dotNV) {\r\n\r\n    float a2 = pow2(alpha);\r\n\r\n    float gv = dotNL * sqrt(a2 + (1.0f - a2) * pow2(dotNV));\r\n    float gl = dotNV * sqrt(a2 + (1.0f - a2) * pow2(dotNL));\r\n\r\n    return 0.5f / max(gv + gl, EPSILON);\r\n\r\n}\r\n\r\nvec3 BRDF_GGX(const in vec3 L, const in vec3 V, const in vec3 N, const in vec3 f0, const in float roughness) {\r\n\r\n    float alpha = pow2(roughness);\r\n\r\n    vec3 H = normalize(L + V);\r\n\r\n    float dotNL = saturate(dot(N, L));\r\n    float dotNV = saturate(dot(N, V));\r\n    float dotNH = saturate(dot(N, H));\r\n    float dotVH = saturate(dot(V, H));\r\n\r\n    vec3 F = F_Schlick(f0, dotVH);\r\n\r\n    float D = D_GGX(alpha, dotNH);\r\n    float G = V_GGX_SmithCorrelated(alpha, dotNL, dotNV);\r\n\r\n    return F * (G * D);\r\n\r\n}\r\n\r\nvec3 PBR(const in vec3 materialColor) {\r\n\r\n    vec3 N = normalize(vNormal);\r\n    vec3 V = normalize(-vPosition);\r\n    vec3 L = normalize(directionalLight.direction);\r\n\r\n    float geometryRoughness = max(roughness, 0.0525f);\r\n\r\n    // 叠加表面梯度\r\n    vec3 dxy = max(abs(dFdx(N)), abs(dFdy(N)));\r\n    float gradient = max(max(dxy.x, dxy.y), dxy.z);\r\n    geometryRoughness = min(geometryRoughness + gradient, 1.0f);\r\n\r\n    // 材质的漫反射基础色\r\n    vec3 diffuseColor = materialColor * (1.0f - metalness);\r\n\r\n    // 材质的镜面反射基础色\r\n    vec3 specularColor = mix(vec3(0.04f), materialColor, metalness);\r\n\r\n    // 来自灯光的辐照度 - 直接辐照度\r\n    vec3 lightIrradiance = directionalLight.color * saturate(dot(N, L));\r\n\r\n    // 来自灯光的漫反射 - 直接漫反射\r\n    vec3 lightDiffuse = lightIrradiance * BRDF_Lambert(diffuseColor);\r\n\r\n    // 来自灯光的镜面反射 - 直接镜面反射\r\n    vec3 lightSpecular = lightIrradiance * BRDF_GGX(L, V, N, specularColor, geometryRoughness);\r\n\r\n    // 来自环境的辐照度 = 环境光 + IBL - 间接辐照度\r\n    vec3 ambientIrradiance = ambientLightColor;\r\n\r\n    // 来自环境的漫反射 - 间接漫反射\r\n    vec3 ambientDiffuse = ambientIrradiance * BRDF_Lambert(diffuseColor);\r\n\r\n    // 最终颜色 = 直接漫反射 + 直接镜面反射 + 间接漫反射 + 间接镜面反射\r\n    return lightDiffuse + lightSpecular + ambientDiffuse;\r\n\r\n}\r\n\r\nvoid main() {\r\n\r\n    vec4 finalColor = vec4(color, opacity);\r\n\r\n    if(useMap && useUV) {\r\n\r\n        finalColor *= texture(map, vUV);\r\n\r\n    }\r\n\r\n    if(useColor) {\r\n\r\n        finalColor *= vColor;\r\n\r\n    }\r\n\r\n    if(useNormal) {\r\n\r\n        finalColor.rgb = PBR(finalColor.rgb);\r\n\r\n    } else {\r\n\r\n        finalColor.rgb *= ambientLightColor;\r\n\r\n    }\r\n\r\n    // linear sRGB 转换到 sRGB\r\n\r\n    vec3 greater = pow(finalColor.rgb, vec3(0.41666f)) * 1.055f - vec3(0.055f);\r\n    vec3 lessAndEqual = finalColor.rgb * 12.92f;\r\n    vec3 flag = vec3(lessThanEqual(finalColor.rgb, vec3(0.0031308f)));\r\n\r\n    oColor.rgb = mix(greater, lessAndEqual, flag);\r\n    oColor.a = finalColor.a;\r\n\r\n}\r\n";
+var fragmentShader$1 = "#version 300 es\r\n\r\nprecision highp float;\r\nprecision highp int;\r\n\r\nout vec4 oColor;\r\n\r\nin vec2 vUV;\r\nin vec3 vNormal;\r\nin vec3 vPosition;\r\nin vec4 vColor;\r\n\r\nuniform bool useUV;\r\nuniform bool useColor;\r\nuniform bool useNormal;\r\n\r\nuniform vec3 color;\r\nuniform float opacity;\r\n\r\nuniform sampler2D map;\r\nuniform bool useMap;\r\n\r\nuniform float roughness;\r\nuniform float metalness;\r\n\r\nuniform vec3 ambientLightColor;\r\n\r\nstruct DirectionalLight {\r\n\r\n    vec3 color;\r\n    vec3 direction;\r\n\r\n};\r\n\r\nuniform DirectionalLight directionalLight;\r\n\r\n#define RECIPROCAL_PI 0.3183098861837907\r\n#define EPSILON 1e-6\r\n\r\n#define saturate( a ) clamp( a, 0.0, 1.0 )\r\n\r\nfloat pow2(const in float x) {\r\n\r\n    return x * x;\r\n\r\n}\r\n\r\nvec3 BRDF_Lambert(const in vec3 diffuseColor) {\r\n\r\n    return RECIPROCAL_PI * diffuseColor;\r\n\r\n}\r\n\r\nvec3 F_Schlick(const in vec3 f0, const in float dotVH) {\r\n\r\n    float fresnel = exp2((-5.55473f * dotVH - 6.98316f) * dotVH);\r\n    return f0 * (1.0f - fresnel) + fresnel;\r\n\r\n}\r\n\r\nfloat D_GGX(const in float alpha, const in float dotNH) {\r\n\r\n    float a2 = pow2(alpha);\r\n\r\n    float denom = pow2(dotNH) * (a2 - 1.0f) + 1.0f;\r\n\r\n    return RECIPROCAL_PI * a2 / pow2(denom);\r\n\r\n}\r\n\r\nfloat V_GGX_SmithCorrelated(const in float alpha, const in float dotNL, const in float dotNV) {\r\n\r\n    float a2 = pow2(alpha);\r\n\r\n    float gv = dotNL * sqrt(a2 + (1.0f - a2) * pow2(dotNV));\r\n    float gl = dotNV * sqrt(a2 + (1.0f - a2) * pow2(dotNL));\r\n\r\n    return 0.5f / max(gv + gl, EPSILON);\r\n\r\n}\r\n\r\n// 使用 GGX 函数，金属高光有更真实的拖尾效果\r\nvec3 BRDF_GGX(const in vec3 L, const in vec3 V, const in vec3 N, const in vec3 f0, const in float roughness) {\r\n\r\n    float alpha = pow2(roughness);\r\n\r\n    vec3 H = normalize(L + V);\r\n\r\n    float dotNL = saturate(dot(N, L));\r\n    float dotNV = saturate(dot(N, V));\r\n    float dotNH = saturate(dot(N, H));\r\n    float dotVH = saturate(dot(V, H));\r\n\r\n    vec3 F = F_Schlick(f0, dotVH);\r\n\r\n    float D = D_GGX(alpha, dotNH);\r\n    float G = V_GGX_SmithCorrelated(alpha, dotNL, dotNV);\r\n\r\n    return F * (G * D);\r\n\r\n}\r\n\r\nvec3 PBR(const in vec3 materialColor) {\r\n\r\n    vec3 N = normalize(vNormal);\r\n    vec3 V = normalize(-vPosition);\r\n    vec3 L = normalize(directionalLight.direction);\r\n\r\n    float geometryRoughness = max(roughness, 0.0525f);\r\n\r\n    // 叠加表面梯度\r\n    vec3 dxy = max(abs(dFdx(N)), abs(dFdy(N)));\r\n    float gradient = max(max(dxy.x, dxy.y), dxy.z);\r\n    geometryRoughness = min(geometryRoughness + gradient, 1.0f);\r\n\r\n    // 材质的漫反射基础色\r\n    vec3 diffuseColor = materialColor * (1.0f - metalness);\r\n\r\n    // 材质的镜面反射基础色\r\n    vec3 specularColor = mix(vec3(0.04f), materialColor, metalness);\r\n\r\n    // 直接辐照度，来自灯光的辐照度\r\n    vec3 directIrradiance = directionalLight.color * saturate(dot(N, L));\r\n\r\n    // 直接漫反射，来自灯光的漫反射，注意：BRDF 函数使用 GGX 版本，漫反射项忽略 Kd 系数\r\n    vec3 directDiffuse = directIrradiance * BRDF_Lambert(diffuseColor);\r\n\r\n    // 直接镜面反射，来自灯光的镜面反射\r\n    vec3 directSpecular = directIrradiance * BRDF_GGX(L, V, N, specularColor, geometryRoughness);\r\n\r\n    // 间接辐照度，来自环境的辐照度 = 环境光 + IBL\r\n    vec3 indirectIrradiance = ambientLightColor;\r\n\r\n    // 间接漫反射，来自环境的漫反射\r\n    vec3 indirectDiffuse = indirectIrradiance * BRDF_Lambert(diffuseColor);\r\n\r\n    // 最终颜色 = 直接漫反射 + 直接镜面反射 + 间接漫反射 + 间接镜面反射\r\n    return directDiffuse + directSpecular + indirectDiffuse;\r\n\r\n}\r\n\r\nvoid main() {\r\n\r\n    vec4 finalColor = vec4(color, opacity);\r\n\r\n    if(useMap && useUV) {\r\n\r\n        finalColor *= texture(map, vUV);\r\n\r\n    }\r\n\r\n    if(useColor) {\r\n\r\n        finalColor *= vColor;\r\n\r\n    }\r\n\r\n    if(useNormal) {\r\n\r\n        finalColor.rgb = PBR(finalColor.rgb);\r\n\r\n    } else {\r\n\r\n        finalColor.rgb *= ambientLightColor;\r\n\r\n    }\r\n\r\n    // linear sRGB 转换到 sRGB\r\n\r\n    vec3 greater = pow(finalColor.rgb, vec3(0.41666f)) * 1.055f - vec3(0.055f);\r\n    vec3 lessAndEqual = finalColor.rgb * 12.92f;\r\n    vec3 flag = vec3(lessThanEqual(finalColor.rgb, vec3(0.0031308f)));\r\n\r\n    oColor.rgb = mix(greater, lessAndEqual, flag);\r\n    oColor.a = finalColor.a;\r\n\r\n}\r\n";
 
 class Vector3 {
     x;
@@ -188,12 +188,6 @@ class Vector3 {
         this.z = array[offset + 2];
         return this;
     }
-    setFromMatrix4(m) {
-        this.x = m.elements[12];
-        this.y = m.elements[13];
-        this.z = m.elements[14];
-        return this;
-    }
     add(right) {
         this.x += right.x;
         this.y += right.y;
@@ -202,6 +196,24 @@ class Vector3 {
     }
     sub(v) {
         return this.subVectors(this, v);
+    }
+    min(v) {
+        this.x = Math.min(this.x, v.x);
+        this.y = Math.min(this.y, v.y);
+        this.z = Math.min(this.z, v.z);
+        return this;
+    }
+    max(v) {
+        this.x = Math.max(this.x, v.x);
+        this.y = Math.max(this.y, v.y);
+        this.z = Math.max(this.z, v.z);
+        return this;
+    }
+    addVectors(l, r) {
+        this.x = l.x + r.x;
+        this.y = l.y + r.y;
+        this.z = l.z + r.z;
+        return this;
     }
     subVectors(l, r) {
         this.x = l.x - r.x;
@@ -239,6 +251,9 @@ class Vector3 {
     equals(v) {
         return v.x === this.x && v.y === this.y && v.z === this.z;
     }
+    dot(v) {
+        return this.x * v.x + this.y * v.y + this.z * v.z;
+    }
     crossVectors(l, r) {
         this.x = l.y * r.z - l.z * r.y;
         this.y = l.z * r.x - l.x * r.z;
@@ -255,21 +270,26 @@ class Vector3 {
         return this.multiplyScalar(1 / (this.length() || 1));
     }
     distanceTo(v) {
+        return Math.sqrt(this.distanceToSq(v));
+    }
+    distanceToSq(v) {
         const dx = this.x - v.x;
         const dy = this.y - v.y;
         const dz = this.z - v.z;
-        return Math.sqrt(dx * dx + dy * dy + dz * dz);
+        return dx * dx + dy * dy + dz * dz;
+    }
+    maxComponent() {
+        return Math.max(this.x, this.y, this.z);
     }
 }
 
-let Instances$2 = class Instances {
-    static up = new Vector3(0, 1, 0);
-    static x = new Vector3(0, 1, 0);
-    static y = new Vector3(0, 1, 0);
-    static z = new Vector3(0, 1, 0);
-};
 class Matrix4 {
     elements;
+    static up = new Vector3(0, 1, 0);
+    static scale = new Vector3();
+    static xAxis = new Vector3();
+    static yAxis = new Vector3();
+    static zAxis = new Vector3();
     constructor(elements = [
         1, 0, 0, 0,
         0, 1, 0, 0,
@@ -431,6 +451,68 @@ class Matrix4 {
                     n12 * n21 * n33 +
                     n12 * n23 * n31));
     }
+    extractPosition(target) {
+        target.x = this.elements[12];
+        target.y = this.elements[13];
+        target.z = this.elements[14];
+        return target;
+    }
+    extractRotation(target) {
+        const me = this.elements.slice();
+        this.extractScale(Matrix4.scale);
+        me[0] /= Matrix4.scale.x;
+        me[1] /= Matrix4.scale.x;
+        me[2] /= Matrix4.scale.x;
+        me[4] /= Matrix4.scale.y;
+        me[5] /= Matrix4.scale.y;
+        me[6] /= Matrix4.scale.y;
+        me[8] /= Matrix4.scale.z;
+        me[9] /= Matrix4.scale.z;
+        me[10] /= Matrix4.scale.z;
+        const trace = me[0] + me[5] + me[10];
+        if (trace > 0) {
+            const s = 0.5 / Math.sqrt(trace + 1.0);
+            target.w = 0.25 / s;
+            target.x = (me[6] - me[9]) * s;
+            target.y = (me[8] - me[2]) * s;
+            target.z = (me[1] - me[4]) * s;
+        }
+        else if (me[0] > me[5] && me[0] > me[10]) {
+            const s = 2.0 * Math.sqrt(1.0 + me[0] - me[5] - me[10]);
+            target.w = (me[6] - me[9]) / s;
+            target.x = 0.25 * s;
+            target.y = (me[4] + me[1]) / s;
+            target.z = (me[8] + me[2]) / s;
+        }
+        else if (me[5] > me[10]) {
+            const s = 2.0 * Math.sqrt(1.0 + me[5] - me[0] - me[10]);
+            target.w = (me[8] - me[2]) / s;
+            target.x = (me[4] + me[1]) / s;
+            target.y = 0.25 * s;
+            target.z = (me[9] + me[6]) / s;
+        }
+        else {
+            const s = 2.0 * Math.sqrt(1.0 + me[10] - me[0] - me[5]);
+            target.w = (me[1] - me[4]) / s;
+            target.x = (me[8] + me[2]) / s;
+            target.y = (me[9] + me[6]) / s;
+            target.z = 0.25 * s;
+        }
+        return target;
+    }
+    extractScale(target) {
+        this.extractBasis(Matrix4.xAxis, Matrix4.yAxis, Matrix4.zAxis);
+        target.x = Matrix4.xAxis.length();
+        target.y = Matrix4.yAxis.length();
+        target.z = Matrix4.zAxis.length();
+        return target;
+    }
+    extractBasis(xAxis, yAxis, zAxis) {
+        xAxis.setFromArray(this.elements, 0);
+        yAxis.setFromArray(this.elements, 4);
+        zAxis.setFromArray(this.elements, 8);
+        return this;
+    }
     makePerspective(left, right, top, bottom, near, far) {
         const te = this.elements;
         const x = (2 * near) / (right - left);
@@ -446,28 +528,28 @@ class Matrix4 {
         return this;
     }
     makeLookAt(eye, target) {
-        Instances$2.z.subVectors(eye, target);
-        if (!Instances$2.z.length()) {
-            Instances$2.z.z = 1;
+        Matrix4.zAxis.subVectors(eye, target);
+        if (!Matrix4.zAxis.length()) {
+            Matrix4.zAxis.z = 1;
         }
-        Instances$2.z.normalize();
-        Instances$2.x.crossVectors(Instances$2.up, Instances$2.z);
-        if (!Instances$2.x.lengthSq()) {
-            Instances$2.z.z += 0.0001;
-            Instances$2.z.normalize();
-            Instances$2.x.crossVectors(Instances$2.up, Instances$2.z);
+        Matrix4.zAxis.normalize();
+        Matrix4.xAxis.crossVectors(Matrix4.up, Matrix4.zAxis);
+        if (!Matrix4.xAxis.lengthSq()) {
+            Matrix4.zAxis.z += 0.0001;
+            Matrix4.zAxis.normalize();
+            Matrix4.xAxis.crossVectors(Matrix4.up, Matrix4.zAxis);
         }
-        Instances$2.x.normalize();
-        Instances$2.y.crossVectors(Instances$2.z, Instances$2.x);
-        this.elements[0] = Instances$2.x.x;
-        this.elements[1] = Instances$2.x.y;
-        this.elements[2] = Instances$2.x.z;
-        this.elements[4] = Instances$2.y.x;
-        this.elements[5] = Instances$2.y.y;
-        this.elements[6] = Instances$2.y.z;
-        this.elements[8] = Instances$2.z.x;
-        this.elements[9] = Instances$2.z.y;
-        this.elements[10] = Instances$2.z.z;
+        Matrix4.xAxis.normalize();
+        Matrix4.yAxis.crossVectors(Matrix4.zAxis, Matrix4.xAxis);
+        this.elements[0] = Matrix4.xAxis.x;
+        this.elements[1] = Matrix4.xAxis.y;
+        this.elements[2] = Matrix4.xAxis.z;
+        this.elements[4] = Matrix4.yAxis.x;
+        this.elements[5] = Matrix4.yAxis.y;
+        this.elements[6] = Matrix4.yAxis.z;
+        this.elements[8] = Matrix4.zAxis.x;
+        this.elements[9] = Matrix4.zAxis.y;
+        this.elements[10] = Matrix4.zAxis.z;
         return this;
     }
     equals(m) {
@@ -708,6 +790,70 @@ class Attribute extends EventObject {
     getX(index) {
         return this.array[index * this.itemSize];
     }
+    getY(index) {
+        return this.array[index * this.itemSize + 1];
+    }
+    getZ(index) {
+        return this.array[index * this.itemSize + 2];
+    }
+    toVector3(index, v) {
+        v.x = this.getX(index);
+        v.y = this.getY(index);
+        v.z = this.getZ(index);
+        return v;
+    }
+}
+
+class Box3 {
+    static vector3 = new Vector3();
+    min = new Vector3(+Infinity, +Infinity, +Infinity);
+    max = new Vector3(-Infinity, -Infinity, -Infinity);
+    makeEmpty() {
+        this.min.x = this.min.y = this.min.z = +Infinity;
+        this.max.x = this.max.y = this.max.z = -Infinity;
+        return this;
+    }
+    isEmpty() {
+        return (this.max.x < this.min.x) || (this.max.y < this.min.y) || (this.max.z < this.min.z);
+    }
+    getCenter(target) {
+        return this.isEmpty() ? target.set(0, 0, 0) : target.addVectors(this.min, this.max).multiplyScalar(0.5);
+    }
+    expandByPoint(point) {
+        this.min.min(point);
+        this.max.max(point);
+        return this;
+    }
+    setFromBufferAttribute(attribute) {
+        this.makeEmpty();
+        for (let ii = 0, il = attribute.count; ii < il; ii++) {
+            attribute.toVector3(ii, Box3.vector3);
+            this.expandByPoint(Box3.vector3);
+        }
+        return this;
+    }
+    copy(box) {
+        this.min.copy(box.min);
+        this.max.copy(box.max);
+        return this;
+    }
+}
+
+class Sphere {
+    static scale = new Vector3();
+    center = new Vector3(0, 0, 0);
+    radius = -1;
+    applyMatrix4(matrix) {
+        this.center.applyMatrix4(matrix);
+        matrix.extractScale(Sphere.scale);
+        this.radius = this.radius * Sphere.scale.maxComponent();
+        return this;
+    }
+    copy(sphere) {
+        this.center.copy(sphere.center);
+        this.radius = sphere.radius;
+        return this;
+    }
 }
 
 class GeometryHelper {
@@ -721,7 +867,10 @@ class GeometryHelper {
     }
 }
 class Geometry extends EventObject {
+    static vector3 = new Vector3();
+    static box3 = new Box3();
     attributes = {};
+    boundingSphere = new Sphere();
     groups = [];
     indices;
     get position() {
@@ -752,6 +901,20 @@ class Geometry extends EventObject {
             materialIndex: materialIndex
         });
         return this;
+    }
+    computeBoundingSphere() {
+        if (!this.position) {
+            return;
+        }
+        const center = this.boundingSphere.center;
+        Geometry.box3.setFromBufferAttribute(this.position);
+        Geometry.box3.getCenter(center);
+        let maxRadiusSq = -1;
+        for (let ii = 0, il = this.position.count; ii < il; ii++) {
+            this.position.toVector3(ii, Geometry.vector3);
+            maxRadiusSq = Math.max(maxRadiusSq, center.distanceToSq(Geometry.vector3));
+        }
+        this.boundingSphere.radius = Math.sqrt(maxRadiusSq);
     }
     dispose() {
         this.emit('dispose');
@@ -799,39 +962,6 @@ class Quaternion {
         this.w = array[offset + 3];
         return this;
     }
-    setFromMatrix4(m) {
-        const me = m.elements;
-        const trace = me[0] + me[5] + me[10];
-        if (trace > 0) {
-            const s = 0.5 / Math.sqrt(trace + 1.0);
-            this.w = 0.25 / s;
-            this.x = (me[6] - me[9]) * s;
-            this.y = (me[8] - me[2]) * s;
-            this.z = (me[1] - me[4]) * s;
-        }
-        else if (me[0] > me[5] && me[0] > me[10]) {
-            const s = 2.0 * Math.sqrt(1.0 + me[0] - me[5] - me[10]);
-            this.w = (me[6] - me[9]) / s;
-            this.x = 0.25 * s;
-            this.y = (me[4] + me[1]) / s;
-            this.z = (me[8] + me[2]) / s;
-        }
-        else if (me[5] > me[10]) {
-            const s = 2.0 * Math.sqrt(1.0 + me[5] - me[0] - me[10]);
-            this.w = (me[8] - me[2]) / s;
-            this.x = (me[4] + me[1]) / s;
-            this.y = 0.25 * s;
-            this.z = (me[9] + me[6]) / s;
-        }
-        else {
-            const s = 2.0 * Math.sqrt(1.0 + me[10] - me[0] - me[5]);
-            this.w = (me[1] - me[4]) / s;
-            this.x = (me[8] + me[2]) / s;
-            this.y = (me[9] + me[6]) / s;
-            this.z = 0.25 * s;
-        }
-        return this;
-    }
     setFromEuler(x, y, z) {
         const c1 = Math.cos(x / 2);
         const c2 = Math.cos(y / 2);
@@ -853,23 +983,15 @@ class TRSObject extends EventObject {
     rotation = new Quaternion(0, 0, 0, 1);
     scale = new Vector3(1, 1, 1);
     matrix = new Matrix4();
-    modelMatrix = new Matrix4();
+    worldMatrix = new Matrix4();
     parent;
     children = [];
     visible = true;
-    updateMatrix(updateParents, updateChildren) {
-        if (updateParents && this.parent) {
-            this.parent.updateMatrix(true, false);
-        }
+    updateMatrix() {
         this.matrix.compose(this.position, this.rotation, this.scale);
-        this.modelMatrix.copy(this.matrix);
+        this.worldMatrix.copy(this.matrix);
         if (this.parent) {
-            this.modelMatrix.multiply(this.parent.modelMatrix);
-        }
-        if (updateChildren) {
-            for (const child of this.children) {
-                child.updateMatrix(false, true);
-            }
+            this.worldMatrix.multiply(this.parent.worldMatrix);
         }
     }
     add(object) {
@@ -908,7 +1030,7 @@ class Mesh extends TRSObject {
         this.material = material;
     }
     updateModelViewMatrix(viewMatrix) {
-        this.modelViewMatrix.multiplyMatrices(this.modelMatrix, viewMatrix);
+        this.modelViewMatrix.multiplyMatrices(this.worldMatrix, viewMatrix);
         this.normalMatrix.makeNormalMatrix(this.modelViewMatrix);
     }
     dispose() {
@@ -928,7 +1050,6 @@ class Mesh extends TRSObject {
 
 class GLBHelper {
     static textDecoder = new TextDecoder();
-    static material = new PhysMaterial();
     static filterMapping = new Map([
         [9728, WebGLConstants.NEAREST],
         [9729, WebGLConstants.LINEAR],
@@ -1091,12 +1212,13 @@ class GLBHelper {
         return new Attribute(array, itemSize, normalized);
     }
 }
-class GBL {
+class GBLParser {
     url;
     onLoad;
     objectDef;
     bufferData;
     geometryCache = new Map();
+    material;
     constructor(url, onLoad) {
         this.url = url;
         this.onLoad = onLoad;
@@ -1195,6 +1317,7 @@ class GBL {
             let geometry = this.geometryCache.get(key);
             if (!geometry) {
                 geometry = GLBHelper.mergeGeometries(geometries);
+                geometry.computeBoundingSphere();
                 this.geometryCache.set(key, geometry);
             }
             mesh = new Mesh(geometry, materials);
@@ -1223,6 +1346,7 @@ class GBL {
                     const attribute = this.loadAttribute(primitive.indices);
                     geometry.indices = attribute;
                 }
+                geometry.computeBoundingSphere();
                 this.geometryCache.set(key, geometry);
             }
             keys.push(key);
@@ -1245,7 +1369,10 @@ class GBL {
         const materials = [];
         for (const primitive of primitives) {
             if (primitive.material === undefined) {
-                materials.push(GLBHelper.material);
+                if (!this.material) {
+                    this.material = new PhysMaterial();
+                }
+                materials.push(this.material);
                 continue;
             }
             const materialDef = this.objectDef.materials[primitive.material];
@@ -1319,7 +1446,7 @@ class GBL {
 }
 class GLBLoader {
     static async load(url, onLoad) {
-        return new GBL(url, onLoad).parse();
+        return new GBLParser(url, onLoad).parse();
     }
 }
 
@@ -1355,11 +1482,61 @@ class ImageLoader {
     }
 }
 
-const EPS = 0.000001;
+class Plane {
+    normal = new Vector3(1, 0, 0);
+    constant = 0;
+    setComponents(x, y, z, w) {
+        this.normal.set(x, y, z);
+        this.constant = w;
+        return this;
+    }
+    normalize() {
+        const inverseNormalLength = 1.0 / this.normal.length();
+        this.normal.multiplyScalar(inverseNormalLength);
+        this.constant *= inverseNormalLength;
+        return this;
+    }
+    distanceToPoint(point) {
+        return this.normal.dot(point) + this.constant;
+    }
+}
+
+class Frustum {
+    planes = [new Plane(), new Plane(), new Plane(), new Plane(), new Plane(), new Plane()];
+    setFromProjectionMatrix(m) {
+        const planes = this.planes;
+        const me = m.elements;
+        const me0 = me[0], me1 = me[1], me2 = me[2], me3 = me[3];
+        const me4 = me[4], me5 = me[5], me6 = me[6], me7 = me[7];
+        const me8 = me[8], me9 = me[9], me10 = me[10], me11 = me[11];
+        const me12 = me[12], me13 = me[13], me14 = me[14], me15 = me[15];
+        planes[0].setComponents(me3 - me0, me7 - me4, me11 - me8, me15 - me12).normalize();
+        planes[1].setComponents(me3 + me0, me7 + me4, me11 + me8, me15 + me12).normalize();
+        planes[2].setComponents(me3 + me1, me7 + me5, me11 + me9, me15 + me13).normalize();
+        planes[3].setComponents(me3 - me1, me7 - me5, me11 - me9, me15 - me13).normalize();
+        planes[4].setComponents(me3 - me2, me7 - me6, me11 - me10, me15 - me14).normalize();
+        planes[5].setComponents(me3 + me2, me7 + me6, me11 + me10, me15 + me14).normalize();
+        return this;
+    }
+    intersectsSphere(sphere) {
+        const planes = this.planes;
+        const center = sphere.center;
+        const negRadius = -sphere.radius;
+        for (let i = 0; i < 6; i++) {
+            const distance = planes[i].distanceToPoint(center);
+            if (distance < negRadius) {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+
 class Spherical {
     radius;
     phi;
     theta;
+    static EPS = 0.000001;
     constructor(radius = 1, phi = 0, theta = 0) {
         this.radius = radius;
         this.phi = phi;
@@ -1385,7 +1562,7 @@ class Spherical {
         return target;
     }
     makeSafe() {
-        this.phi = Math.max(EPS, Math.min(this.phi, Math.PI - EPS));
+        this.phi = Math.max(Spherical.EPS, Math.min(this.phi, Math.PI - Spherical.EPS));
         return this;
     }
 }
@@ -1435,16 +1612,15 @@ class Vector2 {
     }
 }
 
-let Instances$1 = class Instances {
-    static v3_1 = new Vector3();
-    static v3_2 = new Vector3();
-    static m3 = new Matrix3();
-    static m4 = new Matrix4();
-    static sph = new Spherical();
-};
 class Controls {
     camera;
     canvas;
+    static offset = new Vector3();
+    static spherical = new Spherical();
+    static matrix4 = new Matrix4();
+    static pixelDelta = new Vector2();
+    static panDelta = new Vector3();
+    static matrix3 = new Matrix3();
     dispose;
     state = 'none';
     rotateStart = new Vector2();
@@ -1484,30 +1660,24 @@ class Controls {
         return this.camera.rotation;
     }
     get viewPoint() {
-        if (this.camera.viewPoint instanceof TRSObject) {
-            Instances$1.v3_2.setFromMatrix4(this.camera.viewPoint.modelMatrix);
-            return Instances$1.v3_2;
-        }
-        else {
-            return this.camera.viewPoint;
-        }
+        return this.camera.viewPoint;
     }
     update() {
-        Instances$1.v3_1.subVectors(this.position, this.viewPoint);
-        Instances$1.sph.setFromVector3(Instances$1.v3_1);
-        Instances$1.sph.theta -= this.rotateDelta.x;
-        Instances$1.sph.phi -= this.rotateDelta.y;
-        Instances$1.sph.makeSafe();
-        Instances$1.sph.radius *= this.zoom;
-        Instances$1.sph.toVector3(Instances$1.v3_1);
+        Controls.offset.subVectors(this.position, this.viewPoint);
+        Controls.spherical.setFromVector3(Controls.offset);
+        Controls.spherical.theta -= this.rotateDelta.x;
+        Controls.spherical.phi -= this.rotateDelta.y;
+        Controls.spherical.makeSafe();
+        Controls.spherical.radius *= this.zoom;
+        Controls.spherical.toVector3(Controls.offset);
         this.viewPoint.sub(this.panOffset);
         this.position.copy(this.viewPoint);
-        this.position.add(Instances$1.v3_1);
+        this.position.add(Controls.offset);
         this.panOffset.setScalar(0);
         this.rotateDelta.setScalar(0);
         this.zoom = 1;
-        Instances$1.m4.makeLookAt(this.position, this.viewPoint);
-        this.rotation.setFromMatrix4(Instances$1.m4);
+        Controls.matrix4.makeLookAt(this.position, this.viewPoint);
+        Controls.matrix4.extractRotation(this.rotation);
     }
     onContextMenu(event) {
         event.preventDefault();
@@ -1534,15 +1704,15 @@ class Controls {
         }
         if (this.state === 'pan') {
             this.panEnd.set(event.clientX, event.clientY);
-            this.panStart.subVectors(this.panEnd, this.panStart);
+            Controls.pixelDelta.subVectors(this.panEnd, this.panStart);
             const halfFov = this.camera.fov / 360 * Math.PI;
             let edge = this.position.distanceTo(this.viewPoint);
             edge *= Math.tan(halfFov);
-            this.panStart.multiplyScalar(2 * edge / this.canvas.height);
-            Instances$1.v3_1.set(this.panStart.x, -this.panStart.y, 0);
-            Instances$1.m3.setFromMatrix4(this.camera.modelMatrix);
-            Instances$1.v3_1.applyMatrix3(Instances$1.m3);
-            this.panOffset.add(Instances$1.v3_1);
+            Controls.pixelDelta.multiplyScalar(2 * edge / this.canvas.height);
+            Controls.panDelta.set(Controls.pixelDelta.x, -Controls.pixelDelta.y, 0);
+            Controls.matrix3.setFromMatrix4(this.camera.worldMatrix);
+            Controls.panDelta.applyMatrix3(Controls.matrix3);
+            this.panOffset.add(Controls.panDelta);
             this.panStart.copy(this.panEnd);
             return;
         }
@@ -1562,6 +1732,9 @@ class Controls {
     }
 }
 class Camera extends TRSObject {
+    static matrix4 = new Matrix4();
+    static sphere = new Sphere();
+    frustum = new Frustum();
     viewPoint = new Vector3();
     controls;
     viewMatrix = new Matrix4();
@@ -1575,10 +1748,12 @@ class Camera extends TRSObject {
         this.name = 'camera';
         this.controls = new Controls(this, canvas);
     }
-    updateMatrix(updateParents, updateChildren) {
+    updateMatrix() {
         this.controls.update();
-        super.updateMatrix(updateParents, updateChildren);
-        this.viewMatrix.copy(this.modelMatrix).invert();
+        super.updateMatrix();
+        this.viewMatrix.copy(this.worldMatrix).invert();
+        Camera.matrix4.multiplyMatrices(this.viewMatrix, this.projectionMatrix);
+        this.frustum.setFromProjectionMatrix(Camera.matrix4);
     }
     updateProjectionMatrix() {
         const near = this.near;
@@ -1589,6 +1764,11 @@ class Camera extends TRSObject {
         const right = top * this.aspect;
         const left = -right;
         this.projectionMatrix.makePerspective(left, right, top, bottom, near, far);
+    }
+    frustumCulling(mesh) {
+        Camera.sphere.copy(mesh.geometry.boundingSphere);
+        Camera.sphere.applyMatrix4(mesh.worldMatrix);
+        return this.frustum.intersectsSphere(Camera.sphere);
     }
 }
 
@@ -1636,9 +1816,6 @@ class BGMaterial extends Material {
     }
 }
 
-class Instances {
-    static m3 = new Matrix3();
-}
 class Light extends TRSObject {
     lightColor = new Color(1, 1, 1);
     lightIntensity = 1;
@@ -1659,6 +1836,7 @@ class AmbientLight extends Light {
     }
 }
 class DirectionalLight extends Light {
+    static matrix3 = new Matrix3();
     target = new Vector3(0, 0, 0);
     direction = new Vector3(0, 1, 0);
     constructor() {
@@ -1669,8 +1847,8 @@ class DirectionalLight extends Light {
         super.update();
         this.direction.copy(this.position);
         this.direction.sub(this.target);
-        Instances.m3.setFromMatrix4(camera.viewMatrix);
-        this.direction.applyMatrix3(Instances.m3);
+        DirectionalLight.matrix3.setFromMatrix4(camera.viewMatrix);
+        this.direction.applyMatrix3(DirectionalLight.matrix3);
         this.direction.normalize();
     }
 }
@@ -1687,8 +1865,8 @@ class Scene extends TRSObject {
         this.ambientLight = new AmbientLight();
         this.directionalLight = new DirectionalLight();
     }
-    updateMatrix(updateParents, updateChildren) {
-        super.updateMatrix(updateParents, updateChildren);
+    updateMatrix() {
+        super.updateMatrix();
         this.ambientLight.updateMatrix();
         this.directionalLight.updateMatrix();
     }
@@ -2485,7 +2663,7 @@ class WebGL {
         scene.updateLights(camera);
         const renderList = [];
         this.projectObject(scene, camera, renderList);
-        this.renderBackground(scene, camera, renderList);
+        this.renderBackground(scene, renderList);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
         this.renderObjects(renderList, scene, camera);
         this.cache.freeRenderItem(renderList);
@@ -2495,7 +2673,7 @@ class WebGL {
             return;
         }
         object.updateMatrix();
-        if (object instanceof Mesh) {
+        if (object instanceof Mesh && camera.frustumCulling(object)) {
             object.updateModelViewMatrix(camera.viewMatrix);
             const geometry = object.geometry;
             if (Array.isArray(object.material)) {
@@ -2516,7 +2694,7 @@ class WebGL {
             this.projectObject(child, camera, renderList);
         }
     }
-    renderBackground(scene, camera, renderList) {
+    renderBackground(scene, renderList) {
         if (scene.background instanceof Color) {
             this.state.setClearColor(scene.background.r, scene.background.g, scene.background.b);
         }
@@ -2573,15 +2751,15 @@ class WebGL {
         const mesh = item.mesh;
         const material = item.material;
         material.onBeforRender(scene, mesh, camera);
-        const frontFaceCW = mesh.modelMatrix.determinant() < 0;
+        const frontFaceCW = mesh.worldMatrix.determinant() < 0;
         this.state.setFrontFace(frontFaceCW);
         this.state.backfaceCulling(material.backfaceCulling);
-        this.state.resetTextureUnits();
         this.uploadUniform(item);
     }
     uploadUniform(item) {
         const material = item.material;
         const program = item.program;
+        this.state.resetTextureUnits();
         const webglUniforms = this.cache.acquireUniforms(program);
         for (const webglUniform of webglUniforms) {
             const uniform = material.getUniform(webglUniform.name);
@@ -2694,7 +2872,6 @@ class WebGL {
 
 class Dxy {
     canvas;
-    frameHandle = -1;
     width = -1;
     height = -1;
     renderer;
@@ -2708,19 +2885,16 @@ class Dxy {
         this.startAnimationFrame();
     }
     startAnimationFrame() {
-        if (this.frameHandle !== -1) {
-            return;
-        }
         const scope = this;
         let _elapsed = 0, _delta = 0;
         function frameCallback(time) {
-            scope.frameHandle = requestAnimationFrame(frameCallback);
+            requestAnimationFrame(frameCallback);
             time /= 1000;
             _delta = time - _elapsed;
             _elapsed = time;
             scope.animate(_delta);
         }
-        this.frameHandle = requestAnimationFrame(frameCallback);
+        requestAnimationFrame(frameCallback);
     }
     animate(delta) {
         if (this.width !== this.canvas.clientWidth || this.height !== this.canvas.clientHeight) {
@@ -2733,10 +2907,6 @@ class Dxy {
             this.renderer.state.setViewport(0, 0, this.width, this.height);
         }
         this.renderer.render(this.scene, this.camera);
-    }
-    destroy() {
-        cancelAnimationFrame(this.frameHandle);
-        this.frameHandle = -1;
     }
     loadModel(parameters = {}) {
         const type = parameters.type || 'glb';

@@ -7,10 +7,9 @@ import { Mesh } from "../objects/Mesh";
 import { TRSObject } from "../objects/TRSObject";
 import { WebGLConstants } from "../renderer/WebGLConstants";
 
-class GLBHelper {
+class Helper {
 
     public static readonly textDecoder = new TextDecoder();
-    public static readonly material = new PhysMaterial();
 
     public static readonly filterMapping = new Map([
 
@@ -237,7 +236,7 @@ class GLBHelper {
             const attributes = allAttributes.map(e => e.shift()) as Attribute[];
             const name = usedNames.shift() as string;
 
-            const attribute = GLBHelper.mergeAttributes(attributes);
+            const attribute = Helper.mergeAttributes(attributes);
 
             if (attribute) {
 
@@ -286,7 +285,7 @@ class GLBHelper {
 
         }
 
-        const array = GLBHelper.createTypedArray(dataType, arrayLen);
+        const array = Helper.createTypedArray(dataType, arrayLen);
         let offset = 0;
 
         for (const attribute of attributes) {
@@ -302,11 +301,12 @@ class GLBHelper {
 
 }
 
-class GBL {
+class GBLParser {
 
     private objectDef: any;
     private bufferData: ArrayBuffer | undefined;
     private geometryCache = new Map<string, Geometry>();
+    private material: Material | undefined;
 
     public constructor(
 
@@ -364,7 +364,7 @@ class GBL {
             if (chunkType === 0x4E4F534A) {
 
                 const defData = new Uint8Array(data, index, chunkLength);
-                objectDef = GLBHelper.textDecoder.decode(defData);
+                objectDef = Helper.textDecoder.decode(defData);
 
             }
 
@@ -491,7 +491,9 @@ class GBL {
 
             if (!geometry) {
 
-                geometry = GLBHelper.mergeGeometries(geometries);
+                geometry = Helper.mergeGeometries(geometries);
+                geometry.computeBoundingSphere();
+
                 this.geometryCache.set(key, geometry);
 
             }
@@ -514,7 +516,7 @@ class GBL {
 
         for (const primitive of primitives) {
 
-            const key = GLBHelper.getGeometryKey(primitive);
+            const key = Helper.getGeometryKey(primitive);
             geometry = this.geometryCache.get(key);
 
             if (!geometry) {
@@ -523,7 +525,7 @@ class GBL {
 
                 for (const key in primitive.attributes) {
 
-                    const attributeName = GLBHelper.getAttributeName(key);
+                    const attributeName = Helper.getAttributeName(key);
 
                     if (geometry.hasAttribute(attributeName)) {
 
@@ -545,6 +547,8 @@ class GBL {
 
                 }
 
+                geometry.computeBoundingSphere();
+
                 this.geometryCache.set(key, geometry);
 
             }
@@ -562,14 +566,14 @@ class GBL {
 
         const accessorDef = this.objectDef.accessors[index];
 
-        const itemSize = GLBHelper.sizeMapping.get(accessorDef.type) || 0;
+        const itemSize = Helper.sizeMapping.get(accessorDef.type) || 0;
         const type = accessorDef.componentType;
         const count = accessorDef.count;
         const offset = accessorDef.byteOffset || 0;
         const normalized = accessorDef.normalized === true;
 
         const buffer = this.loadBufferView(accessorDef.bufferView);
-        const typedArray = GLBHelper.createTypedArray(type, buffer, offset, count * itemSize);
+        const typedArray = Helper.createTypedArray(type, buffer, offset, count * itemSize);
 
         return new Attribute(typedArray, itemSize, normalized);
 
@@ -583,7 +587,14 @@ class GBL {
 
             if (primitive.material === undefined) {
 
-                materials.push(GLBHelper.material);
+                if (!this.material) {
+
+                    this.material = new PhysMaterial();
+
+                }
+
+                materials.push(this.material);
+
                 continue;
 
             }
@@ -748,10 +759,10 @@ class GBL {
         textureDef.instance = texture;
 
         const samplerDef = this.objectDef.samplers[textureDef.sampler];
-        texture.magFilter = GLBHelper.filterMapping.get(samplerDef.magFilter) || texture.magFilter;
-        texture.minFilter = GLBHelper.filterMapping.get(samplerDef.minFilter) || texture.minFilter;
-        texture.wrapS = GLBHelper.wrapMapping.get(samplerDef.wrapS) || texture.wrapS;
-        texture.wrapT = GLBHelper.wrapMapping.get(samplerDef.wrapT) || texture.wrapT;
+        texture.magFilter = Helper.filterMapping.get(samplerDef.magFilter) || texture.magFilter;
+        texture.minFilter = Helper.filterMapping.get(samplerDef.minFilter) || texture.minFilter;
+        texture.wrapS = Helper.wrapMapping.get(samplerDef.wrapS) || texture.wrapS;
+        texture.wrapT = Helper.wrapMapping.get(samplerDef.wrapT) || texture.wrapT;
 
         return texture;
 
@@ -782,7 +793,7 @@ export class GLBLoader {
 
     public static async load(url: string, onLoad?: Function): Promise<TRSObject | undefined> {
 
-        return new GBL(url, onLoad).parse();
+        return new GBLParser(url, onLoad).parse();
 
     }
 

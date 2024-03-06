@@ -11,7 +11,7 @@ import { RenderItem, WebGLCache } from "./WebGLCache";
 import { WebGLState } from "./WebGLState";
 import { TextureUniform } from "./WebGLUniform";
 
-class ContextHelper {
+class Helper {
 
     private static readonly attributes = {
 
@@ -51,7 +51,7 @@ export class WebGL {
 
     public constructor(canvas: HTMLCanvasElement) {
 
-        this.gl = ContextHelper.getWebGL2(canvas);
+        this.gl = Helper.getWebGL2(canvas);
 
         this.cache = new WebGLCache(this);
         this.state = new WebGLState(this);
@@ -68,7 +68,7 @@ export class WebGL {
         const renderList: RenderItem[] = [];
         this.projectObject(scene, camera, renderList);
 
-        this.renderBackground(scene, camera, renderList);
+        this.renderBackground(scene, renderList);
 
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
 
@@ -88,7 +88,7 @@ export class WebGL {
 
         object.updateMatrix();
 
-        if (object instanceof Mesh) {
+        if (object instanceof Mesh && camera.frustumCulling(object)) {
 
             object.updateModelViewMatrix(camera.viewMatrix);
 
@@ -125,7 +125,7 @@ export class WebGL {
 
     }
 
-    private renderBackground(scene: Scene, camera: Camera, renderList: RenderItem[]): void {
+    private renderBackground(scene: Scene, renderList: RenderItem[]): void {
 
         if (scene.background instanceof Color) {
 
@@ -234,13 +234,11 @@ export class WebGL {
 
         material.onBeforRender(scene, mesh, camera);
 
-        const frontFaceCW = mesh.modelMatrix.determinant() < 0;
+        const frontFaceCW = mesh.worldMatrix.determinant() < 0;
         this.state.setFrontFace(frontFaceCW);
 
         // this.state.depthTest(material.depthTest);
         this.state.backfaceCulling(material.backfaceCulling);
-
-        this.state.resetTextureUnits();
 
         this.uploadUniform(item);
 
@@ -250,6 +248,8 @@ export class WebGL {
 
         const material = item.material as Material;
         const program = item.program as WebGLProgram;
+
+        this.state.resetTextureUnits();
 
         const webglUniforms = this.cache.acquireUniforms(program);
 

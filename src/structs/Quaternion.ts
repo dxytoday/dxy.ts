@@ -22,64 +22,17 @@ export class Quaternion {
 
     }
 
-    public setFromMatrix4(m: Matrix4): Quaternion {
-
-        const me = m.elements;
-        const trace = me[0] + me[5] + me[10];
-
-        if (trace > 0) {
-
-            const s = 0.5 / Math.sqrt(trace + 1.0);
-
-            this.w = 0.25 / s;
-            this.x = (me[6] - me[9]) * s;
-            this.y = (me[8] - me[2]) * s;
-            this.z = (me[1] - me[4]) * s;
-
-        } else if (me[0] > me[5] && me[0] > me[10]) {
-
-            const s = 2.0 * Math.sqrt(1.0 + me[0] - me[5] - me[10]);
-
-            this.w = (me[6] - me[9]) / s;
-            this.x = 0.25 * s;
-            this.y = (me[4] + me[1]) / s;
-            this.z = (me[8] + me[2]) / s;
-
-        } else if (me[5] > me[10]) {
-
-            const s = 2.0 * Math.sqrt(1.0 + me[5] - me[0] - me[10]);
-
-            this.w = (me[8] - me[2]) / s;
-            this.x = (me[4] + me[1]) / s;
-            this.y = 0.25 * s;
-            this.z = (me[9] + me[6]) / s;
-
-        } else {
-
-            const s = 2.0 * Math.sqrt(1.0 + me[10] - me[0] - me[5]);
-
-            this.w = (me[1] - me[4]) / s;
-            this.x = (me[8] + me[2]) / s;
-            this.y = (me[9] + me[6]) / s;
-            this.z = 0.25 * s;
-
-        }
-
-        return this;
-
-    }
-
     public setFromEuler(x: number, y: number, z: number): Quaternion {
 
         /**
          * 
-         * 三个四元数按照 xyz 顺序相乘
+         *      三个四元数按照 xyz 顺序相乘
          *
          * 		qx = ( cos(x), [sin(x), 0, 0] )
          * 		qy = ( cos(y), [0, sin(y), 0] )
          * 		qz = ( cos(z), [0, 0, sin(z)] )
          *
-         * 四元数相乘的规则：
+         *      四元数相乘的规则：
          * 
          * 		a = ( aw, av = [ax, ay, az] ) 
          * 		b = ( bw, bv = [bx, by, bz] )

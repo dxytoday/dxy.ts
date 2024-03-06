@@ -4,12 +4,6 @@ import { Vector3 } from "../structs/Vector3";
 import { Camera } from "./Camera";
 import { TRSObject } from "./TRSObject";
 
-class Instances {
-
-    public static readonly m3 = new Matrix3();
-
-}
-
 class Light extends TRSObject {
 
     public readonly lightColor = new Color(1, 1, 1);
@@ -46,6 +40,8 @@ export class AmbientLight extends Light {
 
 export class DirectionalLight extends Light {
 
+    private static readonly matrix3 = new Matrix3();
+
     public readonly target = new Vector3(0, 0, 0);
     public readonly direction = new Vector3(0, 1, 0);
 
@@ -63,8 +59,8 @@ export class DirectionalLight extends Light {
         this.direction.copy(this.position);
         this.direction.sub(this.target);
 
-        Instances.m3.setFromMatrix4(camera.viewMatrix)
-        this.direction.applyMatrix3(Instances.m3);
+        DirectionalLight.matrix3.setFromMatrix4(camera.viewMatrix)
+        this.direction.applyMatrix3(DirectionalLight.matrix3);
 
         this.direction.normalize();
 

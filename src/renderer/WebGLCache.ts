@@ -19,7 +19,7 @@ export type RenderItem = {
 
 }
 
-class WebGLCacheHelper {
+class Helper {
 
     public static setLineNumber(source: string): string {
 
@@ -153,7 +153,7 @@ export class WebGLCache {
 
                 const reminder = 'Dxy.WebGLCache.acquireShader : 编译着色器代码错误 .';
                 const lastError = this.gl.getShaderInfoLog(shader);
-                source = WebGLCacheHelper.setLineNumber(source);
+                source = Helper.setLineNumber(source);
 
                 throw new Error([reminder, lastError, source].join('\n'));
 

@@ -51,16 +51,6 @@ export class Vector3 {
 
     }
 
-    public setFromMatrix4(m: Matrix4): Vector3 {
-
-        this.x = m.elements[12];
-        this.y = m.elements[13];
-        this.z = m.elements[14];
-
-        return this;
-
-    }
-
     public add(right: Vector3): Vector3 {
 
         this.x += right.x;
@@ -74,6 +64,36 @@ export class Vector3 {
     public sub(v: Vector3): Vector3 {
 
         return this.subVectors(this, v);
+
+    }
+
+    public min(v: Vector3): Vector3 {
+
+        this.x = Math.min(this.x, v.x);
+        this.y = Math.min(this.y, v.y);
+        this.z = Math.min(this.z, v.z);
+
+        return this;
+
+    }
+
+    public max(v: Vector3): Vector3 {
+
+        this.x = Math.max(this.x, v.x);
+        this.y = Math.max(this.y, v.y);
+        this.z = Math.max(this.z, v.z);
+
+        return this;
+
+    }
+
+    public addVectors(l: Vector3, r: Vector3): Vector3 {
+
+        this.x = l.x + r.x;
+        this.y = l.y + r.y;
+        this.z = l.z + r.z;
+
+        return this;
 
     }
 
@@ -136,6 +156,12 @@ export class Vector3 {
 
     }
 
+    public dot(v: Vector3): number {
+
+        return this.x * v.x + this.y * v.y + this.z * v.z;
+
+    }
+
     public crossVectors(l: Vector3, r: Vector3): Vector3 {
 
         this.x = l.y * r.z - l.z * r.y;
@@ -165,11 +191,23 @@ export class Vector3 {
 
     public distanceTo(v: Vector3): number {
 
+        return Math.sqrt(this.distanceToSq(v));
+
+    }
+
+    public distanceToSq(v: Vector3): number {
+
         const dx = this.x - v.x;
         const dy = this.y - v.y;
         const dz = this.z - v.z;
 
-        return Math.sqrt(dx * dx + dy * dy + dz * dz);
+        return dx * dx + dy * dy + dz * dz;
+
+    }
+
+    public maxComponent(): number {
+
+        return Math.max(this.x, this.y, this.z);
 
     }
 

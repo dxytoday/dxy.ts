@@ -28,9 +28,9 @@ export class Scene extends TRSObject {
 
     }
 
-    public updateMatrix(updateParents?: boolean, updateChildren?: boolean): void {
+    public override updateMatrix(): void {
 
-        super.updateMatrix(updateParents, updateChildren);
+        super.updateMatrix();
 
         this.ambientLight.updateMatrix();
         this.directionalLight.updateMatrix();

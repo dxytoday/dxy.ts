@@ -1,22 +1,23 @@
+import { Frustum } from "../structs/Frustum";
 import { Matrix3 } from "../structs/Matrix3";
 import { Matrix4 } from "../structs/Matrix4";
 import { Quaternion } from "../structs/Quaternion";
+import { Sphere } from "../structs/Sphere";
 import { Spherical } from "../structs/Spherical";
 import { Vector2 } from "../structs/Vector2";
 import { Vector3 } from "../structs/Vector3";
+import { Mesh } from "./Mesh";
 import { TRSObject } from "./TRSObject";
 
-class Instances {
-
-    public static readonly v3_1 = new Vector3();
-    public static readonly v3_2 = new Vector3();
-    public static readonly m3 = new Matrix3();
-    public static readonly m4 = new Matrix4();
-    public static readonly sph = new Spherical();
-
-}
-
 class Controls {
+
+    private static readonly offset = new Vector3();
+    private static readonly spherical = new Spherical();
+    private static readonly matrix4 = new Matrix4();
+
+    private static readonly pixelDelta = new Vector2();
+    private static readonly panDelta = new Vector3();
+    private static readonly matrix3 = new Matrix3();
 
     public readonly dispose: () => void;
 
@@ -79,43 +80,34 @@ class Controls {
 
     private get viewPoint(): Vector3 {
 
-        if (this.camera.viewPoint instanceof TRSObject) {
-
-            Instances.v3_2.setFromMatrix4(this.camera.viewPoint.modelMatrix);
-            return Instances.v3_2;
-
-        } else {
-
-            return this.camera.viewPoint;
-
-        }
+        return this.camera.viewPoint
 
     }
 
     public update(): void {
 
-        Instances.v3_1.subVectors(this.position, this.viewPoint);
-        Instances.sph.setFromVector3(Instances.v3_1);
+        Controls.offset.subVectors(this.position, this.viewPoint);
+        Controls.spherical.setFromVector3(Controls.offset);
 
         // 减号目的在于让物体变换的方向和鼠标移动方向一致
-        Instances.sph.theta -= this.rotateDelta.x;
-        Instances.sph.phi -= this.rotateDelta.y;
-        Instances.sph.makeSafe();
+        Controls.spherical.theta -= this.rotateDelta.x;
+        Controls.spherical.phi -= this.rotateDelta.y;
+        Controls.spherical.makeSafe();
 
-        Instances.sph.radius *= this.zoom;
-        Instances.sph.toVector3(Instances.v3_1);
+        Controls.spherical.radius *= this.zoom;
+        Controls.spherical.toVector3(Controls.offset);
 
         this.viewPoint.sub(this.panOffset);
 
         this.position.copy(this.viewPoint);
-        this.position.add(Instances.v3_1);
+        this.position.add(Controls.offset);
 
         this.panOffset.setScalar(0);
         this.rotateDelta.setScalar(0);
         this.zoom = 1;
 
-        Instances.m4.makeLookAt(this.position, this.viewPoint);
-        this.rotation.setFromMatrix4(Instances.m4);
+        Controls.matrix4.makeLookAt(this.position, this.viewPoint);
+        Controls.matrix4.extractRotation(this.rotation);
 
     }
 
@@ -165,7 +157,7 @@ class Controls {
         if (this.state === 'pan') {
 
             this.panEnd.set(event.clientX, event.clientY);
-            this.panStart.subVectors(this.panEnd, this.panStart);
+            Controls.pixelDelta.subVectors(this.panEnd, this.panStart);
 
             // 计算以 fov 为夹角的中心到顶部的距离
             const halfFov = this.camera.fov / 360 * Math.PI;
@@ -173,16 +165,14 @@ class Controls {
             edge *= Math.tan(halfFov);
 
             // 以 [画布高度 = fov 垂直距离] 为基准，计算 xy 移动的等比例距离
-            this.panStart.multiplyScalar(2 * edge / this.canvas.height);
+            Controls.pixelDelta.multiplyScalar(2 * edge / this.canvas.height);
 
             // 从相机空间转换到世界空间，-y 是因为像素 ↓ 为正 webgl ↑ 为正
-            Instances.v3_1.set(this.panStart.x, -this.panStart.y, 0);
-            Instances.m3.setFromMatrix4(this.camera.modelMatrix);
-            Instances.v3_1.applyMatrix3(Instances.m3);
+            Controls.panDelta.set(Controls.pixelDelta.x, -Controls.pixelDelta.y, 0);
+            Controls.matrix3.setFromMatrix4(this.camera.worldMatrix);
+            Controls.panDelta.applyMatrix3(Controls.matrix3);
 
-            // 累计计算结果
-            this.panOffset.add(Instances.v3_1);
-
+            this.panOffset.add(Controls.panDelta);
             this.panStart.copy(this.panEnd);
 
             return;
@@ -220,7 +210,12 @@ class Controls {
 
 export class Camera extends TRSObject {
 
-    public viewPoint: Vector3 | TRSObject = new Vector3();
+    private static readonly matrix4 = new Matrix4();
+    private static readonly sphere = new Sphere();
+
+    private readonly frustum = new Frustum();
+
+    public viewPoint = new Vector3();
 
     public readonly controls: Controls;
 
@@ -241,12 +236,15 @@ export class Camera extends TRSObject {
 
     }
 
-    public override updateMatrix(updateParents?: boolean, updateChildren?: boolean): void {
+    public override updateMatrix(): void {
 
         this.controls.update();
 
-        super.updateMatrix(updateParents, updateChildren);
-        this.viewMatrix.copy(this.modelMatrix).invert();
+        super.updateMatrix();
+        this.viewMatrix.copy(this.worldMatrix).invert();
+
+        Camera.matrix4.multiplyMatrices(this.viewMatrix, this.projectionMatrix);
+        this.frustum.setFromProjectionMatrix(Camera.matrix4);
 
     }
 
@@ -265,6 +263,15 @@ export class Camera extends TRSObject {
         const left = -right;
 
         this.projectionMatrix.makePerspective(left, right, top, bottom, near, far);
+
+    }
+
+    public frustumCulling(mesh: Mesh): boolean {
+
+        Camera.sphere.copy(mesh.geometry.boundingSphere as Sphere);
+        Camera.sphere.applyMatrix4(mesh.worldMatrix);
+
+        return this.frustum.intersectsSphere(Camera.sphere);
 
     }
 

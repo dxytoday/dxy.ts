@@ -7,8 +7,6 @@ import { WebGL } from "./renderer/WebGL";
 
 export default class Dxy {
 
-	private frameHandle: number = -1;
-
 	private width = -1;
 	private height = -1;
 
@@ -29,18 +27,12 @@ export default class Dxy {
 
 	private startAnimationFrame(): void {
 
-		if (this.frameHandle !== -1) {
-
-			return;
-
-		}
-
 		const scope = this;
 		let _elapsed = 0, _delta = 0;
 
 		function frameCallback(time: number): void {
 
-			scope.frameHandle = requestAnimationFrame(frameCallback);
+			requestAnimationFrame(frameCallback);
 
 			time /= 1000;
 			_delta = time - _elapsed;
@@ -50,7 +42,7 @@ export default class Dxy {
 
 		}
 
-		this.frameHandle = requestAnimationFrame(frameCallback);
+		requestAnimationFrame(frameCallback);
 
 	}
 
@@ -72,13 +64,6 @@ export default class Dxy {
 		}
 
 		this.renderer.render(this.scene, this.camera);
-
-	}
-
-	public destroy() {
-
-		cancelAnimationFrame(this.frameHandle);
-		this.frameHandle = -1;
 
 	}
 

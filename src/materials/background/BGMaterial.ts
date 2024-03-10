@@ -2,7 +2,7 @@ import { IUniform, Material } from "../Material";
 import vertexShader from './vertex.glsl';
 import fragmentShader from './fragment.glsl';
 import { CubeTexture, Texture } from "../../modules/Texture";
-import { Camera } from "../../objects/Camera";
+import { Camera } from "../../cameras/Camera";
 import { Mesh } from "../../objects/Mesh";
 import { Scene } from "../../objects/Scene";
 import { Matrix4 } from "../../structs/Matrix4";

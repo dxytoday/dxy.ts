@@ -4,7 +4,7 @@ import vertexShader from './vertex.glsl';
 import fragmentShader from './fragment.glsl';
 import { Texture } from "../../modules/Texture";
 import { Mesh } from "../../objects/Mesh";
-import { Camera } from "../../objects/Camera";
+import { Camera } from "../../cameras/Camera";
 import { Matrix4 } from "../../structs/Matrix4";
 import { Matrix3 } from "../../structs/Matrix3";
 import { Scene } from "../../objects/Scene";

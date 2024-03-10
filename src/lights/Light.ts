@@ -1,8 +1,8 @@
 import { Color } from "../structs/Color";
 import { Matrix3 } from "../structs/Matrix3";
 import { Vector3 } from "../structs/Vector3";
-import { Camera } from "./Camera";
-import { TRSObject } from "./TRSObject";
+import { Camera } from "../cameras/Camera";
+import { TRSObject } from "../objects/TRSObject";
 
 class Light extends TRSObject {
 
@@ -29,13 +29,6 @@ class Light extends TRSObject {
 
 export class AmbientLight extends Light {
 
-    public constructor() {
-
-        super();
-        this.name = 'ambientLight';
-
-    }
-
 }
 
 export class DirectionalLight extends Light {
@@ -44,13 +37,6 @@ export class DirectionalLight extends Light {
 
     public readonly target = new Vector3(0, 0, 0);
     public readonly direction = new Vector3(0, 1, 0);
-
-    public constructor() {
-
-        super();
-        this.name = 'directionalLight';
-
-    }
 
     public override update(camera: Camera): void {
 

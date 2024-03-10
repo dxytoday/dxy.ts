@@ -3,8 +3,8 @@ import { Attribute } from "../modules/Attribute";
 import { Geometry } from "../modules/Geometry";
 import { CubeTexture, TexImage, Texture } from "../modules/Texture";
 import { Color } from "../structs/Color";
-import { Camera } from "./Camera";
-import { DirectionalLight, AmbientLight } from "./Light";
+import { Camera } from "../cameras/Camera";
+import { DirectionalLight, AmbientLight } from "../lights/Light";
 import { Mesh } from "./Mesh";
 import { TRSObject } from "./TRSObject";
 

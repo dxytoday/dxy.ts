@@ -2,7 +2,7 @@ import { Material } from "../materials/Material";
 import { Attribute } from "../modules/Attribute";
 import { Geometry } from "../modules/Geometry";
 import { CubeTexture, Texture } from "../modules/Texture";
-import { Camera } from "../objects/Camera";
+import { Camera } from "../cameras/Camera";
 import { Mesh } from "../objects/Mesh";
 import { Scene } from "../objects/Scene";
 import { TRSObject } from "../objects/TRSObject";

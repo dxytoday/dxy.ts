@@ -6,8 +6,8 @@ import { Sphere } from "../structs/Sphere";
 import { Spherical } from "../structs/Spherical";
 import { Vector2 } from "../structs/Vector2";
 import { Vector3 } from "../structs/Vector3";
-import { Mesh } from "./Mesh";
-import { TRSObject } from "./TRSObject";
+import { Mesh } from "../objects/Mesh";
+import { TRSObject } from "../objects/TRSObject";
 
 class Controls {
 

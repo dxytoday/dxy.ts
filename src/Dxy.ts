@@ -1,21 +1,21 @@
 import { GLBLoader } from "./loaders/GLBLoader";
 import { ImageLoader } from "./loaders/ImageLoader";
-import { Camera } from "./objects/Camera";
+import { Camera } from "./cameras/Camera";
 import { Scene } from "./objects/Scene";
 import { TRSObject } from "./objects/TRSObject";
 import { WebGL } from "./renderer/WebGL";
 
 export default class Dxy {
 
-	private width = -1;
-	private height = -1;
-
 	private readonly renderer: WebGL;
-
 	private readonly scene: Scene;
 	private readonly camera: Camera;
 
-	public constructor(public readonly canvas = document.createElement('canvas')) {
+	public constructor(
+
+		public readonly canvas = document.createElement('canvas')
+
+	) {
 
 		this.renderer = new WebGL(canvas);
 		this.camera = new Camera(canvas);
@@ -27,18 +27,18 @@ export default class Dxy {
 
 	private startAnimationFrame(): void {
 
-		const scope = this;
 		let _elapsed = 0, _delta = 0;
 
-		function frameCallback(time: number): void {
+		const frameCallback = (_time: number) => {
 
 			requestAnimationFrame(frameCallback);
 
-			time /= 1000;
-			_delta = time - _elapsed;
-			_elapsed = time;
+			_time /= 1000;
+			_delta = _time - _elapsed;
+			_elapsed = _time;
 
-			scope.animate(_delta);
+			this.resizing();
+			this.animate(_delta);
 
 		}
 
@@ -46,22 +46,30 @@ export default class Dxy {
 
 	}
 
+	private resizing(): void {
+
+		// if(this.canvas.width)
+
+		// if (this.width !== this.canvas.clientWidth || this.height !== this.canvas.clientHeight) {
+
+		// 	this.width = this.canvas.clientWidth;
+		// 	this.height = this.canvas.clientHeight;
+
+		// 	this.canvas.width = this.width;
+		// 	this.canvas.height = this.height;
+
+		// 	this.camera.aspect = this.width / this.height;
+		// 	this.camera.updateProjectionMatrix();
+
+		// 	this.renderer.state.setViewport(0, 0, this.width, this.height);
+
+		// }
+
+		
+
+	}
+
 	private animate(delta: number): void {
-
-		if (this.width !== this.canvas.clientWidth || this.height !== this.canvas.clientHeight) {
-
-			this.width = this.canvas.clientWidth;
-			this.height = this.canvas.clientHeight;
-
-			this.canvas.width = this.width;
-			this.canvas.height = this.height;
-
-			this.camera.aspect = this.width / this.height;
-			this.camera.updateProjectionMatrix();
-
-			this.renderer.state.setViewport(0, 0, this.width, this.height);
-
-		}
 
 		this.renderer.render(this.scene, this.camera);
 

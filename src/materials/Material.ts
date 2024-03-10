@@ -1,6 +1,6 @@
 import { EventObject } from "../modules/EventObject";
 import { Mesh } from "../objects/Mesh";
-import { Camera } from "../objects/Camera";
+import { Camera } from "../cameras/Camera";
 import { Scene } from "../objects/Scene";
 
 export interface IUniform<T = any> {

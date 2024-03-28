@@ -48,7 +48,7 @@ float pow2(const in float x) {
 float getShadow() {
 
     vec3 shadowCoord = vShadowCoord.xyz / vShadowCoord.w;
-    shadowCoord.z -= 0.006f;
+    shadowCoord.z -= 0.006f; // 添加一个固定的 bias ，暂时不做参数传递
 
     bool inFrustum = shadowCoord.x >= 0.0f && shadowCoord.x <= 1.0f && shadowCoord.y >= 0.0f && shadowCoord.y <= 1.0f;
     float projectedDepth = texture(shadowMap, shadowCoord.xy).r;

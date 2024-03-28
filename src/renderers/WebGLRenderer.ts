@@ -172,6 +172,12 @@ export class WebGLRenderer {
 
                     const material = materials[group.materialIndex];
 
+                    if (!material) {
+
+                        continue;
+
+                    }
+
                     const item = this.cache.mallocRenderItem(object, geometry, material, group);
 
                     if (material.transparent) {
@@ -280,11 +286,9 @@ export class WebGLRenderer {
 
             if (Array.isArray(material)) {
 
-                const groups = geometry.groups;
+                const renderGroups = geometry.groups;
 
-                for (let k = 0, kl = groups.length; k < kl; k++) {
-
-                    const group = groups[k];
+                for (const group of renderGroups) {
 
                     if (!material[group.materialIndex]) {
 

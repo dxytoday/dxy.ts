@@ -113,7 +113,6 @@ export default class Dxy {
 				if (object) {
 
 					this.scene.add(object);
-
 					result = true;
 
 				}
@@ -121,6 +120,8 @@ export default class Dxy {
 				break;
 
 			case 'fbx':
+
+				// 暂时不需要
 
 				break;
 
@@ -147,11 +148,13 @@ export default class Dxy {
 
 			case 'image':
 
-				// ImageLoader.load(image, (image: HTMLImageElement) => {
+				const imageTexture = await TextureLoader.loadImageTexture(image);
 
-				// 	this.scene.setBackgroundImage(image);
+				if (imageTexture) {
 
-				// });
+					this.scene.setBackgroundImage(imageTexture);
+
+				}
 
 				break;
 

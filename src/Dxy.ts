@@ -1,15 +1,18 @@
 import { GLBLoader } from "./loaders/GLBLoader";
-import { ImageLoader } from "./loaders/ImageLoader";
-import { Camera } from "./cameras/Camera";
 import { Scene } from "./objects/Scene";
-import { TRSObject } from "./objects/TRSObject";
-import { WebGL } from "./renderer/WebGL";
+import { TRSObject } from "./modules/TRSObject";
+import { WebGLRenderer } from "./renderers/WebGLRenderer";
+import { OrbitControls } from "./controls/OrbitControls";
+import { PerspectiveCamera } from "./cameras/PerspectiveCamera";
+import { TextureLoader } from "./loaders/TextureLoader";
 
 export default class Dxy {
 
-	private readonly renderer: WebGL;
+	private readonly renderer: WebGLRenderer;
 	private readonly scene: Scene;
-	private readonly camera: Camera;
+
+	private readonly camera: PerspectiveCamera;
+	private readonly orbitControls: OrbitControls;
 
 	public constructor(
 
@@ -17,9 +20,13 @@ export default class Dxy {
 
 	) {
 
-		this.renderer = new WebGL(canvas);
-		this.camera = new Camera(canvas);
+		this.renderer = new WebGLRenderer(canvas);
 		this.scene = new Scene();
+
+		this.camera = new PerspectiveCamera();
+		this.orbitControls = new OrbitControls(canvas, this.camera);
+
+		this.resizing(true);
 
 		this.startAnimationFrame();
 
@@ -38,6 +45,7 @@ export default class Dxy {
 			_elapsed = _time;
 
 			this.resizing();
+
 			this.animate(_delta);
 
 		}
@@ -46,36 +54,52 @@ export default class Dxy {
 
 	}
 
-	private resizing(): void {
+	private resizing(force?: boolean): void {
 
-		// if(this.canvas.width)
+		if (
 
-		// if (this.width !== this.canvas.clientWidth || this.height !== this.canvas.clientHeight) {
+			!force &&
+			this.canvas.width === this.canvas.clientWidth &&
+			this.canvas.height === this.canvas.clientHeight
 
-		// 	this.width = this.canvas.clientWidth;
-		// 	this.height = this.canvas.clientHeight;
+		) {
 
-		// 	this.canvas.width = this.width;
-		// 	this.canvas.height = this.height;
+			return;
 
-		// 	this.camera.aspect = this.width / this.height;
-		// 	this.camera.updateProjectionMatrix();
+		}
 
-		// 	this.renderer.state.setViewport(0, 0, this.width, this.height);
+		const width = this.canvas.clientWidth;
+		const height = this.canvas.clientHeight
 
-		// }
+		this.canvas.width = width;
+		this.canvas.height = height;
 
-		
+		this.camera.aspect = width / height;
+		this.camera.updateProjectionMatrix();
+
+		this.renderer.setSize(width, height);
 
 	}
 
 	private animate(delta: number): void {
 
+		// 临时
+		if (this.scene.children[0]) {
+
+			const y = this.scene.children[0].rotation.eulerY + Math.PI * delta * 0.25;
+			this.scene.children[0].rotation.eulerY = y % (Math.PI * 2);
+
+		}
+
+		this.orbitControls.update(delta);
+
 		this.renderer.render(this.scene, this.camera);
 
 	}
 
-	public loadModel(parameters: any = {}): void {
+	public async loadModel(parameters: any = {}): Promise<boolean> {
+
+		let result = false;
 
 		const type: string = parameters.type || 'glb';
 		const url: string = parameters.url;
@@ -84,29 +108,29 @@ export default class Dxy {
 
 			case 'glb':
 
-				GLBLoader.load(url, (object: TRSObject) => {
+				const object = await GLBLoader.load(url);
 
-					if (object) {
+				if (object) {
 
-						this.scene.add(object);
+					this.scene.add(object);
 
-					}
+					result = true;
 
-				});
+				}
 
 				break;
 
 			case 'fbx':
 
-
-
 				break;
 
 		}
 
+		return result;
+
 	}
 
-	public setBackground(parameters: any = {}): void {
+	public async setBackground(parameters: any = {}): Promise<void> {
 
 		const type: string = parameters.type;
 		const color: string = parameters.color;
@@ -123,28 +147,23 @@ export default class Dxy {
 
 			case 'image':
 
-				ImageLoader.load(image, (image: HTMLImageElement) => {
+				// ImageLoader.load(image, (image: HTMLImageElement) => {
 
-					this.scene.setBackgroundImage(image);
+				// 	this.scene.setBackgroundImage(image);
 
-				});
+				// });
 
 				break;
 
 			case 'skybox':
 
-				ImageLoader.loadArray(
-					[
-						`${skybox}/px.jpg`, `${skybox}/nx.jpg`,
-						`${skybox}/py.jpg`, `${skybox}/ny.jpg`,
-						`${skybox}/pz.jpg`, `${skybox}/nz.jpg`,
-					],
-					(images: HTMLImageElement[]) => {
+				const cubeTexture = await TextureLoader.loadCubeTexture(skybox);
 
-						this.scene.setBackgroundCube(images);
+				if (cubeTexture) {
 
-					}
-				);
+					this.scene.setBackgroundCube(cubeTexture);
+
+				}
 
 				break;
 

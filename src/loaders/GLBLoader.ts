@@ -1,46 +1,47 @@
 import { Material } from "../materials/Material";
-import { PhysMaterial } from "../materials/physical/PhysMaterial";
-import { Attribute, TypedArray } from "../modules/Attribute";
+import { Attribute } from "../modules/Attribute";
 import { Geometry } from "../modules/Geometry";
-import { Texture } from "../modules/Texture";
+import { Texture } from "../textures/Texture";
 import { Mesh } from "../objects/Mesh";
-import { TRSObject } from "../objects/TRSObject";
-import { WebGLConstants } from "../renderer/WebGLConstants";
+import { TRSObject } from "../modules/TRSObject";
+import { Constants } from "../Constants";
+import { ImageTexture } from "../textures/ImageTexture";
+import { PhysicalMaterial } from "../materials/PhysicalMaterial";
 
-class Helper {
+abstract class Helper {
 
     public static readonly textDecoder = new TextDecoder();
 
-    public static readonly filterMapping = new Map([
+    public static readonly filters: Mapping = {
 
-        [9728, WebGLConstants.NEAREST],
-        [9729, WebGLConstants.LINEAR],
-        [9984, WebGLConstants.NEAREST_MIPMAP_NEAREST],
-        [9985, WebGLConstants.LINEAR_MIPMAP_NEAREST],
-        [9986, WebGLConstants.NEAREST_MIPMAP_LINEAR],
-        [9987, WebGLConstants.LINEAR_MIPMAP_LINEAR],
+        9728: Constants.NEAREST,
+        9729: Constants.LINEAR,
+        9984: Constants.NEAREST_MIPMAP_NEAREST,
+        9985: Constants.LINEAR_MIPMAP_NEAREST,
+        9986: Constants.NEAREST_MIPMAP_LINEAR,
+        9987: Constants.LINEAR_MIPMAP_LINEAR,
 
-    ]);
+    };
 
-    public static readonly wrapMapping = new Map([
+    public static readonly wraps: Mapping = {
 
-        [10497, WebGLConstants.REPEAT],
-        [33071, WebGLConstants.CLAMP_TO_EDGE],
-        [33648, WebGLConstants.MIRRORED_REPEAT],
+        10497: Constants.REPEAT,
+        33071: Constants.CLAMP_TO_EDGE,
+        33648: Constants.MIRRORED_REPEAT,
 
-    ]);
+    };
 
-    public static readonly sizeMapping = new Map([
+    public static readonly sizes: Mapping = {
 
-        ['SCALAR', 1],
-        ['VEC2', 2],
-        ['VEC3', 3],
-        ['VEC4', 4],
-        ['MAT2', 2],
-        ['MAT3', 9],
-        ['MAT4', 16],
+        'SCALAR': 1,
+        'VEC2': 2,
+        'VEC3': 3,
+        'VEC4': 4,
+        'MAT2': 2,
+        'MAT3': 9,
+        'MAT4': 16,
 
-    ]);
+    };
 
     public static getGeometryKey(primitive: any = {}): string {
 
@@ -166,7 +167,7 @@ class Helper {
 
                 if (!geometry.indices) {
 
-                    console.warn(`Dxy.GLBLoader : ${ii} 个几何体缺少索引数据 . `);
+                    console.warn(`DXY.GLBLoader : ${ii} 个几何体缺少索引数据 . `);
                     continue;
 
                 }
@@ -194,7 +195,7 @@ class Helper {
 
             if (isBreak) {
 
-                console.warn(`Dxy.GLBLoader : 第 ${ii} 个几何体缺少属性 . `);
+                console.warn(`DXY.GLBLoader : 第 ${ii} 个几何体缺少属性 . `);
                 continue;
 
             }
@@ -276,7 +277,7 @@ class Helper {
 
             ) {
 
-                console.warn(`Dxy.GLBLoader : 第 ${ii} 个缓冲属性类型错误 . `);
+                console.warn(`DXY.GLBLoader : 第 ${ii} 个缓冲属性类型错误 . `);
                 return undefined;
 
             }
@@ -303,17 +304,20 @@ class Helper {
 
 class GBLParser {
 
-    private objectDef: any;
+    private objectDef: GLBObject;
     private bufferData: ArrayBuffer | undefined;
     private geometryCache = new Map<string, Geometry>();
     private material: Material | undefined;
 
     public constructor(
 
-        private url: string,
-        private onLoad?: Function
+        private url: string
 
-    ) { }
+    ) {
+
+        this.objectDef = {} as GLBObject;
+
+    }
 
     public async parse(): Promise<TRSObject | undefined> {
 
@@ -324,12 +328,6 @@ class GBLParser {
         if (this.objectDef.scenes) {
 
             scene = await this.loadScene(this.objectDef.scene);
-
-        }
-
-        if (typeof this.onLoad === 'function') {
-
-            this.onLoad(scene);
 
         }
 
@@ -350,7 +348,8 @@ class GBLParser {
         const length = dataView.getUint32(8, true);
 
         let index = 12, chunkLength: number, chunkType: number;
-        let objectDef: string | undefined, bufferData: ArrayBuffer | undefined;
+        let objectDef: string | undefined;
+        let bufferData: ArrayBuffer | undefined;
 
         while (index < length) {
 
@@ -379,8 +378,13 @@ class GBLParser {
 
         }
 
-        this.objectDef = objectDef ? JSON.parse(objectDef) : {};
         this.bufferData = bufferData;
+
+        if (objectDef) {
+
+            this.objectDef = JSON.parse(objectDef);
+
+        }
 
     }
 
@@ -426,25 +430,25 @@ class GBLParser {
 
         node.name = nodeDef.name || '';
 
-        if (nodeDef.translation !== undefined) {
+        if (nodeDef.translation) {
 
             node.position.setFromArray(nodeDef.translation as number[]);
 
         }
 
-        if (nodeDef.rotation !== undefined) {
+        if (nodeDef.rotation) {
 
             node.rotation.setFromArray(nodeDef.rotation as number[]);
 
         }
 
-        if (nodeDef.scale !== undefined) {
+        if (nodeDef.scale) {
 
             node.scale.setFromArray(nodeDef.scale as number[]);
 
         }
 
-        if (nodeDef.children !== undefined) {
+        if (nodeDef.children) {
 
             for (const childIndex of nodeDef.children) {
 
@@ -465,7 +469,7 @@ class GBLParser {
 
         const meshDef = this.objectDef.meshes[index];
 
-        if (meshDef.instance !== undefined) {
+        if (meshDef.instance) {
 
             return meshDef.instance;
 
@@ -566,14 +570,15 @@ class GBLParser {
 
         const accessorDef = this.objectDef.accessors[index];
 
-        const itemSize = Helper.sizeMapping.get(accessorDef.type) || 0;
+        const itemSize = Helper.sizes[accessorDef.type] || 0;
         const type = accessorDef.componentType;
         const count = accessorDef.count;
         const offset = accessorDef.byteOffset || 0;
         const normalized = accessorDef.normalized === true;
+        const length = count * itemSize;
 
         const buffer = this.loadBufferView(accessorDef.bufferView);
-        const typedArray = Helper.createTypedArray(type, buffer, offset, count * itemSize);
+        const typedArray = Helper.createTypedArray(type, buffer, offset, length);
 
         return new Attribute(typedArray, itemSize, normalized);
 
@@ -589,7 +594,7 @@ class GBLParser {
 
                 if (!this.material) {
 
-                    this.material = new PhysMaterial();
+                    this.material = new PhysicalMaterial();
 
                 }
 
@@ -608,7 +613,7 @@ class GBLParser {
 
             }
 
-            const material = new PhysMaterial();
+            const material = new PhysicalMaterial();
             materialDef.instance = material;
 
             material.name = materialDef.name;
@@ -755,14 +760,14 @@ class GBLParser {
 
         }
 
-        const texture = new Texture(imageDef.instance);
+        const texture = new ImageTexture(imageDef.instance);
         textureDef.instance = texture;
 
         const samplerDef = this.objectDef.samplers[textureDef.sampler];
-        texture.magFilter = Helper.filterMapping.get(samplerDef.magFilter) || texture.magFilter;
-        texture.minFilter = Helper.filterMapping.get(samplerDef.minFilter) || texture.minFilter;
-        texture.wrapS = Helper.wrapMapping.get(samplerDef.wrapS) || texture.wrapS;
-        texture.wrapT = Helper.wrapMapping.get(samplerDef.wrapT) || texture.wrapT;
+        texture.magFilter = Helper.filters[samplerDef.magFilter] || texture.magFilter;
+        texture.minFilter = Helper.filters[samplerDef.minFilter] || texture.minFilter;
+        texture.wrapS = Helper.wraps[samplerDef.wrapS] || texture.wrapS;
+        texture.wrapT = Helper.wraps[samplerDef.wrapT] || texture.wrapT;
 
         return texture;
 
@@ -791,9 +796,9 @@ class GBLParser {
 
 export class GLBLoader {
 
-    public static async load(url: string, onLoad?: Function): Promise<TRSObject | undefined> {
+    public static async load(url: string): Promise<TRSObject | undefined> {
 
-        return new GBLParser(url, onLoad).parse();
+        return new GBLParser(url).parse();
 
     }
 

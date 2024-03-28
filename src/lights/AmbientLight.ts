@@ -1,2 +1,5 @@
+import { Light } from "./Light";
 
-export class AmbientLight { }
+export class AmbientLight extends Light {
+
+}

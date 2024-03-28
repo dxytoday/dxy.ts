@@ -1,59 +1,58 @@
-import { WebGLConstants } from "../renderer/WebGLConstants";
-import { Vector3 } from "../structs/Vector3";
-import { EventObject } from "./EventObject";
+import { Vector3 } from "../math/Vector3";
+import { Constants } from "../Constants";
+import { Box3 } from "../math/Box3";
 
-export type TypedArray = Int8Array | Uint8Array | Int16Array | Uint16Array | Uint32Array | Float32Array;
+abstract class Helper {
 
-class Helper {
+    public static readonly vector3 = new Vector3();
 
     public static getGLType(constructor: Function): number {
 
         if (constructor === Int8Array) {
 
-            return WebGLConstants.BYTE;
+            return Constants.BYTE;
 
         }
 
         if (constructor === Uint8Array) {
 
-            return WebGLConstants.UNSIGNED_BYTE;
+            return Constants.UNSIGNED_BYTE;
 
         }
 
         if (constructor === Int16Array) {
 
-            return WebGLConstants.SHORT;
+            return Constants.SHORT;
 
         }
 
         if (constructor === Uint16Array) {
 
-            return WebGLConstants.UNSIGNED_SHORT;
+            return Constants.UNSIGNED_SHORT;
 
         }
 
         if (constructor === Uint32Array) {
 
-            return WebGLConstants.UNSIGNED_INT;
+            return Constants.UNSIGNED_INT;
 
         }
 
         if (constructor === Float32Array) {
 
-            return WebGLConstants.FLOAT;
+            return Constants.FLOAT;
 
         }
 
-        return WebGLConstants.FLOAT;
+        return Constants.FLOAT;
 
     }
 
 }
 
-export class Attribute extends EventObject {
+export class Attribute {
 
     public readonly dataType: number;
-    public dataUsage = WebGLConstants.STATIC_DRAW;
 
     public needsUpdate = false;
 
@@ -64,8 +63,6 @@ export class Attribute extends EventObject {
         public normalized = false,
 
     ) {
-
-        super();
 
         this.dataType = Helper.getGLType(array.constructor);
 
@@ -95,13 +92,40 @@ export class Attribute extends EventObject {
 
     }
 
-    public toVector3(index: number, v: Vector3): Vector3 {
+    public toVector3(index: number, target: Vector3): Vector3 {
 
-        v.x = this.getX(index);
-        v.y = this.getY(index);
-        v.z = this.getZ(index);
+        target.x = this.getX(index);
+        target.y = this.getY(index);
+        target.z = this.getZ(index);
 
-        return v;
+        return target;
+
+    }
+
+    public toBox3(target: Box3): Box3 {
+
+        target.makeEmpty();
+
+        for (let ii = 0, li = this.count; ii < li; ii++) {
+
+            this.toVector3(ii, Helper.vector3);
+            target.expandByPoint(Helper.vector3);
+
+        }
+
+        return target;
+
+    }
+
+    public static createF3(array: TypedArray | number[]): Attribute {
+
+        return new Attribute(new Float32Array(array), 3, false);
+
+    }
+
+    public static createF2(array: TypedArray | number[]): Attribute {
+
+        return new Attribute(new Float32Array(array), 2, false);
 
     }
 

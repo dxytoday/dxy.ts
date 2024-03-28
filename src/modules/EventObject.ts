@@ -1,11 +1,4 @@
-export type EventParameters = {
-
-    source?: EventObject;
-    [propName: string]: any;
-
-}
-
-export class EventObject {
+export abstract class EventObject {
 
     declare private handlers: Map<string, Map<Function, Object>> | undefined;
 
@@ -58,17 +51,20 @@ export class EventObject {
 
         const handlers = this.handlers.get(eventName);
 
-        if (handlers) {
+        if (!handlers) {
 
-            parameters.source = this;
+            return;
 
-            const entries = handlers.entries(); // 防止在迭代过程中列表变化引起报错
+        }
 
-            for (const [handler, scope] of entries) {
+        parameters.source = this;
 
-                handler.call(scope, parameters);
+        // 获取集合副本，防止在迭代过程中列表变化引起报错
+        const entries = handlers.entries();
 
-            }
+        for (const [handler, scope] of entries) {
+
+            handler.call(scope, parameters);
 
         }
 

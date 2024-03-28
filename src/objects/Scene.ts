@@ -1,41 +1,76 @@
-import { BGMaterial } from "../materials/background/BGMaterial";
+import { Color } from "../math/Color";
+import { Mesh } from "./Mesh";
+import { TRSObject } from "../modules/TRSObject";
+import { ImageTexture } from "../textures/ImageTexture";
+import { CubeTexture } from "../textures/CubeTexture";
+import { AmbientLight } from "../lights/AmbientLight";
+import { DirectionalLight } from "../lights/DirectionalLight";
 import { Attribute } from "../modules/Attribute";
 import { Geometry } from "../modules/Geometry";
-import { CubeTexture, TexImage, Texture } from "../modules/Texture";
-import { Color } from "../structs/Color";
+import { ImageMaterial } from "../materials/ImageMaterial";
+import { CubeMaterial } from "../materials/CubeMaterial";
 import { Camera } from "../cameras/Camera";
-import { DirectionalLight, AmbientLight } from "../lights/Light";
-import { Mesh } from "./Mesh";
-import { TRSObject } from "./TRSObject";
+
+abstract class Helper {
+
+    public static readonly COLOR = 0;
+    public static readonly IMAGE = 1;
+    public static readonly CUBE = 2;
+
+    public static createImageMesh(): Mesh {
+
+        const vertices = [-1, 1, -1, -1, 1, 1, -1, -1, 1, -1, 1, 1];
+        const uvs = [0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1];
+
+        const geometry = new Geometry();
+        geometry.setAttribute('position', Attribute.createF2(vertices));
+        geometry.setAttribute('uv', Attribute.createF2(uvs));
+
+        return new Mesh(geometry, new ImageMaterial());
+
+    }
+
+    public static createCubeMesh(): Mesh {
+
+        const DLF = [-0.5, -0.5, 0.5]; // down left front 1
+        const DRF = [0.5, -0.5, 0.5]; // down right front 2
+        const URF = [0.5, 0.5, 0.5]; // up right font 3
+        const ULF = [-0.5, 0.5, 0.5]; // up left front 4
+        const DLB = [-0.5, -0.5, -0.5]; // down left back 5
+        const DRB = [0.5, -0.5, -0.5]; // down right back 6
+        const URB = [0.5, 0.5, -0.5]; // up right back 7
+        const ULB = [-0.5, 0.5, -0.5]; // up left back 8
+
+        const vertices = [
+
+            ULF, ULB, URB, ULF, URB, URF, // up
+            DLB, DLF, DRF, DLB, DRF, DRB, // down
+            DLB, ULB, ULF, DLB, ULF, DLF, // left
+            DRF, URF, URB, DRF, URB, DRB, // right
+            DLF, ULF, URF, DLF, URF, DRF, // front
+            DRB, URB, ULB, DRB, ULB, DLB, // back
+
+        ].flat();
+
+        const geometry = new Geometry();
+        geometry.setAttribute('position', Attribute.createF3(vertices));
+
+        return new Mesh(geometry, new CubeMaterial());
+
+    }
+
+}
 
 export class Scene extends TRSObject {
 
-    private static planeMesh: Mesh | undefined;
-    private static cubeMesh: Mesh | undefined;
+    public readonly backgroundColor = new Color(0, 0, 0);
+    public readonly backgroundImage = Helper.createImageMesh();
+    public readonly backgroundCube = Helper.createCubeMesh();
 
-    public background: undefined | Color | Mesh;
+    public bgType = Helper.COLOR;
 
-    public readonly ambientLight: AmbientLight;
-    public readonly directionalLight: DirectionalLight;
-
-    public constructor() {
-
-        super();
-        this.name = 'scene';
-
-        this.ambientLight = new AmbientLight();
-        this.directionalLight = new DirectionalLight();
-
-    }
-
-    public override updateMatrix(): void {
-
-        super.updateMatrix();
-
-        this.ambientLight.updateMatrix();
-        this.directionalLight.updateMatrix();
-
-    }
+    public readonly ambientLight = new AmbientLight();
+    public readonly directionalLight = new DirectionalLight();
 
     public updateLights(camera: Camera): void {
 
@@ -46,84 +81,45 @@ export class Scene extends TRSObject {
 
     public setBackgroundColor(color: string): void {
 
-        if (this.background instanceof Mesh) {
+        this.backgroundColor.setStyle(color);
 
-            this.background.dispose();
-
-        }
-
-        this.background = new Color();
-        this.background.setStyle(color);
+        this.bgType = Helper.COLOR;
 
     }
 
-    public setBackgroundImage(image: TexImage): void {
+    public setBackgroundImage(texture: ImageTexture): void {
 
-        if (!Scene.planeMesh) {
+        const material = this.backgroundImage.material as ImageMaterial;
 
-            const vertices = [-1, 1, -1, -1, 1, 1, -1, -1, 1, -1, 1, 1];
-            const position = new Attribute(new Float32Array(vertices), 2);
+        // material.map && material.map.dispose();
+        material.map = texture;
 
-            const uvs = [0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1];
-            const uv = new Attribute(new Float32Array(uvs), 2);
-
-            const geometry = new Geometry();
-            geometry.setAttribute('position', position);
-            geometry.setAttribute('uv', uv);
-
-            Scene.planeMesh = new Mesh(geometry, new BGMaterial());
-
-        }
-
-        this.background = Scene.planeMesh;
-
-        const material = this.background.material as BGMaterial;
-        material.map && material.map.dispose();
-        material.map = new Texture(image);
+        this.bgType = Helper.IMAGE;
 
     }
 
-    public setBackgroundCube(images: TexImage[]): void {
+    public setBackgroundCube(cubeTexture: CubeTexture): void {
 
-        if (!Scene.cubeMesh) {
+        const material = this.backgroundCube.material as CubeMaterial;
 
-            const DLF = [-0.5, -0.5, 0.5]; // down left front 1
-            const DRF = [0.5, -0.5, 0.5]; // down right front 2
-            const URF = [0.5, 0.5, 0.5]; // up right font 3
-            const ULF = [-0.5, 0.5, 0.5]; // up left front 4
-            const DLB = [-0.5, -0.5, -0.5]; // down left back 5
-            const DRB = [0.5, -0.5, -0.5]; // down right back 6
-            const URB = [0.5, 0.5, -0.5]; // up right back 7
-            const ULB = [-0.5, 0.5, -0.5]; // up left back 8
+        // material.cube && material.cube.dispose();
+        material.cube = cubeTexture;
 
-            const vertices = [
+        this.bgType = Helper.CUBE;
 
-                ULF, ULB, URB, ULF, URB, URF, // up
-                DLB, DLF, DRF, DLB, DRF, DRB, // down
-                DLB, ULB, ULF, DLB, ULF, DLF, // left
-                DRF, URF, URB, DRF, URB, DRB, // right
-                DLF, ULF, URF, DLF, URF, DRF, // front
-                DRB, URB, ULB, DRB, ULB, DLB, // back
+    }
 
-            ].flat();
+    public getBackground(): Color | Mesh {
 
-            const position = new Attribute(new Float32Array(vertices), 3);
+        switch (this.bgType) {
 
-            const geometry = new Geometry();
-            geometry.setAttribute('position', position);
-
-            const material = new BGMaterial();
-            material.isCube = true;
-
-            Scene.cubeMesh = new Mesh(geometry, material);
+            case Helper.COLOR: return this.backgroundColor;
+            case Helper.IMAGE: return this.backgroundImage;
+            case Helper.CUBE: return this.backgroundCube;
 
         }
 
-        this.background = Scene.cubeMesh;
-
-        const material = this.background.material as BGMaterial;
-        material.cube && material.cube.dispose();
-        material.cube = new CubeTexture(images);
+        return this.backgroundColor;
 
     }
 

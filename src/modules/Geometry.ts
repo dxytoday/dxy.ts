@@ -1,18 +1,9 @@
-import { Box3 } from "../structs/Box3";
-import { Sphere } from "../structs/Sphere";
-import { Vector3 } from "../structs/Vector3";
+import { Box3 } from "../math/Box3";
+import { Sphere } from "../math/Sphere";
+import { Vector3 } from "../math/Vector3";
 import { Attribute } from "./Attribute";
-import { EventObject } from "./EventObject";
 
-export type RenderGroup = {
-
-    start: number;
-    count: number;
-    materialIndex: number;
-
-}
-
-class Helper {
+abstract class Helper {
 
     public static readonly vector3 = new Vector3();
     public static readonly box3 = new Box3();
@@ -35,11 +26,11 @@ class Helper {
 
 }
 
-export class Geometry extends EventObject {
+export class Geometry {
 
     public readonly attributes: { [key: string]: Attribute; } = {};
-    public readonly boundingSphere = new Sphere();
     public readonly groups: RenderGroup[] = [];
+    public readonly boundingSphere = new Sphere();
 
     public indices: Attribute | undefined;
 
@@ -110,7 +101,7 @@ export class Geometry extends EventObject {
 
         const center = this.boundingSphere.center;
 
-        Helper.box3.setFromBufferAttribute(this.position);
+        this.position.toBox3(Helper.box3);
         Helper.box3.getCenter(center);
 
         let maxRadiusSq = -1;
@@ -123,12 +114,6 @@ export class Geometry extends EventObject {
         }
 
         this.boundingSphere.radius = Math.sqrt(maxRadiusSq);
-
-    }
-
-    public dispose(): void {
-
-        this.emit('dispose');
 
     }
 

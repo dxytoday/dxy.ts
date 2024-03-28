@@ -37,8 +37,12 @@
 		const canvas = document.getElementById("canvas");
 		const dxy = new Dxy(canvas);
 
+		window.dxy = dxy;
+
 		dxy.setBackground(
+
 			{
+
 				// type: 'color',
 				// color: '#000000',
 
@@ -47,23 +51,23 @@
 
 				type: 'skybox',
 				skybox: './resources/textures/skybox',
+
 			}
+
 		);
 
 		dxy.loadModel(
+
 			{
 				type: 'glb',
 				url: './resources/models/shpere.glb',
 			}
+
 		);
 
-		dxy.camera.position.set(13.5, 13.5, 50);
-		dxy.camera.viewPoint.set(13.5, 13.5, 0);
-
-		dxy.scene.ambientLight.lightIntensity = 0.2;
-		dxy.scene.directionalLight.position.set(0, 0, 1);
-
-		window.dxy = dxy;
+		dxy.camera.position.set(0, 0, 50);
+		dxy.scene.ambientLight.intensity = 0.2;
+		dxy.scene.directionalLight.position.set(0, 50, 50);
 
 	</script>
 

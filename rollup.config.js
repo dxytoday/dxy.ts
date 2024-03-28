@@ -11,7 +11,7 @@ export default {
 		},
 	],
 	plugins: [
-		string({ include: ["**/*.glsl"] }),
+		string({ include: ["**/*.glsl", "**/*.vert", "**/*.frag"] }),
 		typescript(),
 	]
 };
